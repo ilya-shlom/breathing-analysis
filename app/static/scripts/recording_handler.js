@@ -1,164 +1,109 @@
-const mic_button = document.getElementById("mic-button");
-const stop_button = document.getElementById("mic-stop");
-const playback = document.querySelector(".playback");
-const recording_status = document.getElementById("record-status");
+const socket = io();
 
-mic_button.addEventListener('click', ToggleMic);
-stop_button.addEventListener('click', StopRecording);
+let mediaRecorder;
+let stream;
+let last_time = document.getElementById('stopwatch').innerHTML;
 
-let can_record = false;
-let is_recording = false;
-let recorder = null;
+async function sendData() {
+    const formData = new FormData(document.getElementById('audio-sender'));
+    console.log(formData);
+    formData.append('last_time', last_time);
+    formData.append('current_step', document.getElementById('step').innerHTML);
 
-let first_record = true;
-
-let prefix = "";
-let starting_point = 0;
-let current_step = "";
-let transcript = "";
-
-let chunks = [];
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function AudioSetup() {
-    console.log("Setting up");
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({
-            audio: true
-        })
-        .then (StreamSetup)
-        .catch (err => {
-            console.error(err)
+    try {
+        const response = await fetch("/cut", {
+            method: 'POST',
+            body:  formData 
         });
-    }
-}
 
-function StreamSetup(stream) {
-    recorder = new MediaRecorder(stream);
+        if (response.ok) {
+            console.log("Form data successfully sent to server.");
+            const textResponse = await response.text();
+            const data = JSON.parse(textResponse);  // Use .json() if Content-Type is application/json
 
-    recorder.ondataavailable = e => {
-        chunks.push(e.data);
-    }
+            const transcript = data.transcript;
+            const inhale_exhale = data.inhale_exhale;
+            const recording_time = data.recording_time;
+            const activity = data.activity;
 
-    recorder.onstop = e => {
-        const blob = new Blob(chunks, {'type': "audio/wav"});
-        chunks = [];
-        const audio_url = window.URL.createObjectURL(blob);
-        playback.src = audio_url;
-
-        const xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState == XMLHttpRequest.DONE) {
-                serverResponse = xhr.responseText;
-                serverResponse = JSON.parse(serverResponse);
-                console.log(serverResponse.activity);
-                document.getElementById("transcript").innerHTML += `<tr>
-                <td>${serverResponse.transcript}</td>
-                <td>${serverResponse.recording_time}</td>
-                <td>${serverResponse.inhale_exhale}</td>
-                <td>${serverResponse.activity}</td>
+            document.getElementById("transcript").innerHTML += `<tr>
+                <td>${transcript}</td>
+                <td>${recording_time}</td>
+                <td>${inhale_exhale}</td>
+                <td>${activity}</td>
                 </tr>`
-            }
+
+        } else {
+            console.error("Failed to send form data.");
         }
+    } catch (error) {
+        console.error("Error sending form data:", error);
+    }
+}
 
-        var fd = new FormData();
-        fd.append("audio_data", blob, 'temp.wav');
+// Start recording and streaming audio
+document.getElementById('mic-button').addEventListener('click', async () => {
+    startStopwatch();
+    if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
+        document.getElementById('step').innerHTML = "inhale";
+    }
+    try {
+        // Use the modern getUserMedia API
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Create a MediaRecorder instance; the browser selects the best supported MIME type
+        mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
 
+        // When data is available, send the audio chunk via socket.io
+        mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+            // Socket.IO supports sending Blob objects (binary data)
+            socket.emit('audio_chunk', event.data);
+        }
+        };
 
-        fd.set("prefix", prefix);
+        // Start recording with a short timeslice (e.g., 250ms) for low latency streaming.
+        mediaRecorder.start(250);
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
+    }
+});
 
-        if (current_step != "auto")
-            fd.set("starting_point", starting_point.toString());
+// Stop recording and release audio resources
+document.getElementById('mic-stop').addEventListener('click', async () => {
+    sendData();
+    stopStopwatch();
+if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    stream.getTracks().forEach(track => track.stop());
+    const formData = new FormData(document.getElementById('audio-sender'));
+    try {
+        const response = await fetch("/stop", {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            console.log("Recording finished & file removed.");
+            const textResponse = await response.text();
+            const data = JSON.parse(textResponse);
+            window.final_filename = data.final_filename;
+
+        } else {
+            console.error("Failed to send request.");
+        }
+    } catch (error) {
+        console.error("Error sending request:", error);
+    }
+}
+});
+
+document.getElementById('mic-cut').addEventListener('click', async () => {
+    sendData();
+    last_time = document.getElementById('stopwatch').innerHTML;
+    if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
+        if (document.getElementById('step').innerHTML === "inhale") 
+            document.getElementById('step').innerHTML = "exhale";
         else
-            fd.set("starting_point", "0");
-        fd.set("current_step", current_step);
-        
-        if (current_step == "inhale")
-            current_step = "exhale";
-        else if (current_step == "exhale") {
-            current_step = "inhale";
-            starting_point += 1;
-        }
-        
-
-        for (const [key, value] of fd.entries()) {
-            console.log(key, value);
-          }
-
-        xhr.open('post', '/save_file', true);
-
-        xhr.send(fd);
-        // .then(function (response) {
-
-        //     if (response.ok) {
-        //         response.json()
-        //             .then(function (response) {
-        //                 transcript = response['transcript'];
-        //                 document.getElementById("transcript").innerHTML += `\n${transcript}`
-        //                 return(1);
-        //             });
-        //     } else {
-        //         throw Error('Something went wrong');
-        //     }
-        // })
-        // .catch(function (error) {
-        //     console.log(error);
-        // });
+            document.getElementById('step').innerHTML = "inhale";
     }
-
-    can_record = true;
-}
-
-function ToggleMic() {
-    if (!can_record)
-        return;
-
-    console.log(is_recording);
-
-    if (first_record) {
-        prefix = document.getElementById('prefix').value;
-        starting_point = 0;
-        record_type = document.querySelector(`[name="record_type"]:checked`).value;
-        if (record_type == "manual_ie") {
-            current_step = "inhale";
-            starting_point = parseInt(document.getElementById('start').value);
-        }
-        else
-            current_step = "auto";
-        
-        activity_mode = document.querySelector(`[name="mode"]:checked`).value;
-        if (activity_mode == 'automatic_activity') {
-            prefix += '_auto';
-        }
-        first_record = false;
-    }
-
-
-    is_recording = !is_recording;
-
-    if (is_recording) {
-        recorder.start();
-        recording_status.innerHTML = `Recording...`;
-    } else {
-        recorder.stop();
-        recording_status.innerHTML = "Not Recording";
-        sleep(500).then(() => {
-            is_recording = !is_recording;
-            recorder.start();
-            recording_status.innerHTML = `Recording...`;
-        })
-
-    }
-}
-
-function StopRecording() {
-    if (!first_record) {
-        recorder.stop();
-        recording_status.innerHTML = "Not recording";
-    }
-}
-
-AudioSetup();
+});

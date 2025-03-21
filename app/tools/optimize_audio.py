@@ -122,7 +122,7 @@ def optimize_audio(parent_dir, modified_dir):
         custom_equalizer(song, song)
         # remove_high_freq(song, song)
 
-def optimize_once(parent, modified, cutout = 0):
+def optimize_once(parent, modified, cutout=0):
     print("optimizing..")
     wav = AudioSegment.from_wav(parent)
     wav_cutout = wav[cutout:] # [750:]

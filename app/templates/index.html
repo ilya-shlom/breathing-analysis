@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@6.0.0/dist/plugin/wavesurfer.regions.min.js"></script>
+
     <title>Breath Analyzer</title>
     <style>
         table, th, td {
@@ -15,16 +19,19 @@
 </head>
 <body>
     <main>
-        <!-- <form id="audio-sender"> -->
-            <input type="text" id="prefix" placeholder="Folder/file prefix"><br>
-            <input type="text" id="start" placeholder="Starting point" style="display: block"><br>
+        <form id="audio-sender">
+            <input type="text" id="prefix" name="prefix" value="a" placeholder="Folder/file prefix"><br>
+            <input type="text" id="start" name="start" placeholder="Starting point" style="display: block"><br>
             <input type="radio" name="record_type" value="manual_ie" onclick="document.getElementById('start').style.display='block'"><label>Periodic inhale/exhale</label>
             <input type="radio" name="record_type" value="automatic_ie" onclick="document.getElementById('start').style.display='none'"><label>Automatic inhale/exhale</label><br><br>
             <input type="radio" name="mode" value="manual_activity" onclick="document.getElementById('prefix').placeholder='Folder/file prefix'"><label>Manual activity</label>
             <input type="radio" name="mode" value="automatic_activity" onclick="document.getElementById('prefix').placeholder='Folder name'"><label>Automatic activity</label><br><br>
-        <!-- </form> -->
+        </form>
         <button class="mic-toggle" id="mic-button">
             <span class="material-icons">mic</span>
+        </button>
+        <button class="mic-cut" id="mic-cut">
+            <span class="material-icons">content_cut</span>
         </button>
         <button class="mic-stop" id="mic-stop">
             <span class="material-icons">stop</span>
@@ -32,6 +39,7 @@
         <audio class="playback" controls></audio>
         <br>
         <div class="stopwatch" id="stopwatch">00:00:00:000</div>
+        <div id="step"></div>
         <br>
         <p id="record-status">Not recording</p>
         <table id="transcript">
@@ -43,10 +51,12 @@
             </tr>
         </table>
         <button onclick="saveToCSV();">Save to CSV</button>
+        <div id="waveform"></div>
         </main>
     </main>
 <script src="/static/scripts/recording_handler.js"></script>
 <script src="/static/scripts/saveToCsv.js"></script>
 <script src="/static/scripts/stopwatch.js"></script>
+<script type="module" src="/static/scripts/wave.js"></script>
 </body>
 </html>

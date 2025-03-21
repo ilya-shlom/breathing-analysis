@@ -1,13 +1,16 @@
 import os
 import time as t
 
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_file
+from flask_socketio import SocketIO
 import joblib
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import subprocess
 import shutil
 from sklearn.feature_extraction.text import HashingVectorizer
+import numpy as np
+import soundfile as sf
 
 from tools import optimize_audio, translate_breath, create_waveform
 from tools.get_features import get_features_frame
@@ -27,6 +30,15 @@ app.config.update(
     TEMPLATES_AUTO_RELOAD=True
 )
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+socketio = SocketIO(app)
+
+# File to which audio chunks are appended in binary mode.
+RECORDING_FILE = "recording.webm"
+
+# Ensure the recording file exists/starts empty.
+with open(RECORDING_FILE, "wb") as f:
+    pass
+
 
 
 @app.route('/')
@@ -34,19 +46,41 @@ def index():
     return render_template("index.html")
 
 
-@app.route('/save_file', methods=['GET', 'POST'])
+@app.route('/audio')
+def audio():
+    # Serve the current recording.
+    # Note: Depending on your OS, reading a file while it's being written to may require extra care.
+    return send_file(RECORDING_FILE, mimetype='audio/webm')
+
+@socketio.on('audio_chunk')
+def handle_audio_chunk(chunk):
+    global last_timestamp  
+    current_timestamp = t.time()  
+    # 'chunk' is binary data from the client.
+    with open(RECORDING_FILE, "ab") as f:
+        f.write(chunk)
+    
+    last_timestamp = current_timestamp  # Store last timestamp for debugging
+    print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
+    # Optionally, you can add any logic (logging, broadcasting, etc.) here.
+
+
+@app.route('/cut', methods=['GET', 'POST'])
 def save_file():
     if request.method == "POST":
-        print(request.files)
-        data = request.files["audio_data"]
+        print(request.form)
         prefix = request.form.get("prefix")
-        starting_point = request.form.get("starting_point")
+        record_type = request.form.get("record_type")
+        mode = request.form.get("mode")
         current_step = request.form.get("current_step")
-        filename = data.filename
+        time = request.form.get("last_time")
+
+        # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
+
+        # print(prefix)
+        filename = "temp.webm"
         # filename = request.files["prefix"] + "/" + filename
-        data.save(filename)
-        data.flush()
-        data.close()
+        shutil.copy(RECORDING_FILE, filename)
 
 
         # change codec
@@ -55,25 +89,31 @@ def save_file():
             os.makedirs(f'web_recordings/{prefix}/audio')
             os.makedirs(f'web_recordings/{prefix}/graphs')
 
-        if current_step != "auto":
-            output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{starting_point}.wav'
+        if record_type != "automatic_ie":
+            output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
         else:
             output_filename = 'temp_proccessed.wav'
         subprocess.run([
-            "ffmpeg", "-y", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
+            "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
             ])
+
+        # data.save(output_filename)
+        # data.flush()
+        # data.close()
         
         print("finished subprocess")
         # t.sleep(0.5)
         
         # get transcript
         # output_filename_debug = f'web_recordings/{prefix}/mod_{prefix}_{current_step}_{starting_point}.wav'
-        optimize_audio.optimize_once(output_filename, output_filename)
+        time_split = time.split(':')
+        cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
+        optimize_audio.optimize_once(output_filename, output_filename, cutout)
 
         recording_time = t.strftime('%d.%m.%Y %X')
 
         # Inhale/Exhale detection
-        if current_step == "auto":
+        if record_type == "automatic_ie":
             df_classification = get_features_frame([output_filename], 1).transpose()
             for dropped_columns in [0, 6, 7]:
                 df_classification = df_classification.drop(dropped_columns, axis=1)
@@ -105,10 +145,29 @@ def save_file():
         
         return {
             'transcript' : transcript, 
-            'recording_time' : recording_time,
+            'recording_time' : time,
             'inhale_exhale' : current_step,
             'activity' : prefix
             }
+    
+
+@app.route('/stop', methods=['GET', 'POST'])
+def remove_file():
+    if request.method == "POST":
+        prefix = request.form.get("prefix")
+        recording_time = t.strftime('%d.%m.%Y_%X')
+        try:
+            if os.path.exists(RECORDING_FILE):
+                final_filename = f'web_recordings/{prefix}/audio/{prefix}_full_{recording_time}.wav'
+                subprocess.run([
+                    "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", final_filename
+                    ])
+                os.remove(RECORDING_FILE)
+                return jsonify({"final_filename": final_filename}), 200
+            else:
+                return jsonify({"message": "File not found"}), 404
+        except Exception as e:
+            return jsonify({"message": f"Error deleting file: {str(e)}"}), 500
     
 
 # @app.route('/create_csv', methods=['GET', 'POST'])
@@ -121,5 +180,4 @@ def save_file():
 
 if __name__ == "__main__":
     # app.secret_key = os.urandom(30).hex()
-    app.run(host='0.0.0.0', port='5001', debug=True, ssl_context="adhoc")
-    
+    socketio.run(app, host='0.0.0.0', port='5001', debug=True, ssl_context="adhoc")

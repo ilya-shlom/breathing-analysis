@@ -67,3 +67,6 @@ web_recordings/*
 
 temp*
 !templates
+
+*.wav
+*.webm
