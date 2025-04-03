@@ -22,6 +22,7 @@ MODELS_FOLDER = 'models'
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript.pkl")
+transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript_breath.pkl")
 hash_vectorizer = HashingVectorizer(analyzer='char_wb', ngram_range=(3, 5), n_features=50)
 
 
@@ -69,11 +70,12 @@ def handle_audio_chunk(chunk):
 def save_file():
     if request.method == "POST":
         print(request.form)
-        prefix = request.form.get("prefix")
-        record_type = request.form.get("record_type")
-        mode = request.form.get("mode")
-        current_step = request.form.get("current_step")
-        time = request.form.get("last_time")
+        prefix, record_type, mode, current_step, time = fetch_file_data(request, ["prefix",
+                                                                                "record_type",
+                                                                                "mode", 
+                                                                                "current_step", 
+                                                                                "last_time"])
+        
 
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
@@ -112,29 +114,16 @@ def save_file():
 
         recording_time = t.strftime('%d.%m.%Y %X')
 
-        # Inhale/Exhale detection
-        if record_type == "automatic_ie":
-            df_classification = get_features_frame([output_filename], 1).transpose()
-            for dropped_columns in [0, 6, 7]:
-                df_classification = df_classification.drop(dropped_columns, axis=1)
-
-            for dropped_columns in range(21, 33):
-                df_classification = df_classification.drop(dropped_columns, axis=1)
-
-            for dropped_columns in range(34, 68):
-                df_classification = df_classification.drop(dropped_columns, axis=1)
-
-            prediction = ie_model.predict(df_classification)
-            print(f"Predicted class: {prediction}")
-            current_step = 'exhale' if prediction[0] == 1 else 'inhale'
-            final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{recording_time}.wav'
-            shutil.copyfile(output_filename, final_output_filename)
 
         transcript = translate_breath.translate_breath(output_filename)
 
-        # create graph
-        graph_path = f'web_recordings/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
-        create_waveform.create_waveform(output_filename, transcript, graph_path)
+        # Inhale/Exhale detection
+        if record_type == "automatic_ie":
+            prediction = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+            print(f"Predicted class: {prediction}")
+            current_step = 'exhale' if prediction == 1 else 'inhale'
+            final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{recording_time}.wav'
+            shutil.copyfile(output_filename, final_output_filename)
 
         # Activity detection
         if prefix.find('_auto') != -1:
@@ -142,7 +131,10 @@ def save_file():
             prefix = 'Active' if detected_activity_cluster == 2 else 'Resting' if detected_activity_cluster == 1 else 'Other'
         # transcript_prefix = f'{prefix} {current_step} {starting_point}: '
 
-        
+        # create graph
+        graph_path = f'web_recordings/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
+        create_waveform.create_waveform(output_filename, transcript, graph_path)
+
         return {
             'transcript' : transcript, 
             'recording_time' : time,

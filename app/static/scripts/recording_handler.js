@@ -62,7 +62,7 @@ document.getElementById('mic-button').addEventListener('click', async () => {
         };
 
         // Start recording with a short timeslice (e.g., 250ms) for low latency streaming.
-        mediaRecorder.start(250);
+        mediaRecorder.start(200);
     } catch (err) {
         console.error('Error accessing microphone:', err);
     }
