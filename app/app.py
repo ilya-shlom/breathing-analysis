@@ -12,7 +12,7 @@ from sklearn.feature_extraction.text import HashingVectorizer
 import numpy as np
 import soundfile as sf
 
-from tools import optimize_audio, translate_breath, create_waveform
+from tools import optimize_audio, audio_fingerprinting, create_waveform
 from tools.get_features import get_features_frame
 
 from src.utils import *
@@ -62,7 +62,7 @@ def handle_audio_chunk(chunk):
         f.write(chunk)
     
     last_timestamp = current_timestamp  # Store last timestamp for debugging
-    print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
+    # print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
     # Optionally, you can add any logic (logging, broadcasting, etc.) here.
 
 
@@ -115,7 +115,7 @@ def save_file():
         recording_time = t.strftime('%d.%m.%Y %X')
 
 
-        transcript = translate_breath.translate_breath(output_filename)
+        transcript = audio_fingerprinting.translate_breath(output_filename)
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
