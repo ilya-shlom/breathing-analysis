@@ -23,6 +23,7 @@ async function sendData() {
 
             const transcript = data.transcript;
             const inhale_exhale = data.inhale_exhale;
+            const inhale_exhale_predicted = data.inhale_exhale_predicted;
             const recording_time = data.recording_time;
             const activity = data.activity;
 
@@ -30,6 +31,7 @@ async function sendData() {
                 <td>${transcript}</td>
                 <td>${recording_time}</td>
                 <td>${inhale_exhale}</td>
+                <td>${inhale_exhale_predicted}</td>
                 <td>${activity}</td>
                 </tr>`
 
@@ -44,9 +46,9 @@ async function sendData() {
 // Start recording and streaming audio
 document.getElementById('mic-button').addEventListener('click', async () => {
     startStopwatch();
-    if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
+    // if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
         document.getElementById('step').innerHTML = "inhale";
-    }
+    // }
     try {
         // Use the modern getUserMedia API
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -100,10 +102,10 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
 document.getElementById('mic-cut').addEventListener('click', async () => {
     sendData();
     last_time = document.getElementById('stopwatch').innerHTML;
-    if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
+    // if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
         if (document.getElementById('step').innerHTML === "inhale") 
             document.getElementById('step').innerHTML = "exhale";
         else
             document.getElementById('step').innerHTML = "inhale";
-    }
+    // }
 });

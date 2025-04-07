@@ -80,7 +80,7 @@ def save_file():
                                                                                 "last_time", 
                                                                                 "update"])
         
-
+        current_step_predicted = '-'
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
         # print(prefix)
@@ -150,6 +150,7 @@ def save_file():
             'transcript' : transcript, 
             'recording_time' : time,
             'inhale_exhale' : current_step,
+            'inhale_exhale_predicted' : current_step_predicted,
             'activity' : prefix
             }
     
