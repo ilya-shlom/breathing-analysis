@@ -125,15 +125,16 @@ def save_file():
         if record_type == "automatic_ie":
             prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
             print(f"Predicted class: {prediction}")
-            current_step = 'exhale' if prediction == 1 else 'inhale'
-            final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{recording_time}.wav'
+            current_step_predicted = 'exhale' if prediction == 1 else 'inhale'
+            final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step_predicted}_{recording_time}.wav'
             shutil.copyfile(output_filename, final_output_filename)
         
         # Update model
         if update:
-            ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
-            with open(IE_MODEL_FILE, 'wb') as f:
-                joblib.dump(ie_fingerprint_model, f)  
+            if current_step == current_step_predicted:
+                ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
+                with open(IE_MODEL_FILE, 'wb') as f:
+                    joblib.dump(ie_fingerprint_model, f)  
 
         # Activity detection
         if prefix.find('_auto') != -1:
