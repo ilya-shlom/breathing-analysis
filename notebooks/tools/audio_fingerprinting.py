@@ -134,6 +134,7 @@ def translate_breath(b):
             lambda fingerprint: compute_continuous_similarity(breath_fragment_fp, fingerprint)
         )
         # print(letters["similarity"])
+        letters.to_csv("similarity.csv", index=False)
         # Find the letter with the highest similarity
         best_letter = letters.loc[letters["similarity"].idxmax(), "letter"]
         transcript += best_letter

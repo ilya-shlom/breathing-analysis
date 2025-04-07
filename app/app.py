@@ -20,7 +20,10 @@ from src.utils import *
 UPLOAD_FOLDER = '/data'
 MODELS_FOLDER = 'models'
 
+IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
+
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
+ie_fingerprint_model = joblib.load(IE_MODEL_FILE)
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript.pkl")
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript_breath.pkl")
 hash_vectorizer = HashingVectorizer(analyzer='char_wb', ngram_range=(3, 5), n_features=50)
@@ -70,11 +73,12 @@ def handle_audio_chunk(chunk):
 def save_file():
     if request.method == "POST":
         print(request.form)
-        prefix, record_type, mode, current_step, time = fetch_file_data(request, ["prefix",
+        prefix, record_type, mode, current_step, time, update = fetch_file_data(request, ["prefix",
                                                                                 "record_type",
                                                                                 "mode", 
                                                                                 "current_step", 
-                                                                                "last_time"])
+                                                                                "last_time", 
+                                                                                "update"])
         
 
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
@@ -119,11 +123,17 @@ def save_file():
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
-            prediction = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+            prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
             print(f"Predicted class: {prediction}")
             current_step = 'exhale' if prediction == 1 else 'inhale'
             final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{recording_time}.wav'
             shutil.copyfile(output_filename, final_output_filename)
+        
+        # Update model
+        if update:
+            ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
+            with open(IE_MODEL_FILE, 'wb') as f:
+                joblib.dump(ie_fingerprint_model, f)  
 
         # Activity detection
         if prefix.find('_auto') != -1:
