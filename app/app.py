@@ -11,8 +11,9 @@ import shutil
 from sklearn.feature_extraction.text import HashingVectorizer
 import numpy as np
 import soundfile as sf
+from PyBreathTranscript import transcript as bt
 
-from tools import optimize_audio, audio_fingerprinting, create_waveform
+from tools import optimize_audio, create_waveform
 from tools.get_features import get_features_frame
 
 from src.utils import *
@@ -119,7 +120,7 @@ def save_file():
         recording_time = t.strftime('%d.%m.%Y %X')
 
 
-        transcript = audio_fingerprinting.translate_breath(output_filename)
+        transcript = bt.transcript(output_filename, method=bt.FINGERPRINT)
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
