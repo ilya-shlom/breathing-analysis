@@ -70,6 +70,22 @@ def handle_audio_chunk(chunk):
     # Optionally, you can add any logic (logging, broadcasting, etc.) here.
 
 
+@app.route('/transcript', methods=['GET', 'POST'])
+def transcript():
+    if request.method == "GET":
+        filename = request.args.get("filename")
+        if not filename:
+            return jsonify({"error": "Filename parameter is missing"}), 400
+        try:
+            result = bt.transcript(filename)
+            return jsonify({"filename": filename,
+                            "transcript": result})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Method not allowed"}), 405
+
+
 @app.route('/cut', methods=['GET', 'POST'])
 def save_file():
     if request.method == "POST":
