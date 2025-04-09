@@ -109,3 +109,10 @@ document.getElementById('mic-cut').addEventListener('click', async () => {
             document.getElementById('step').innerHTML = "inhale";
     // }
 });
+
+
+socket.on('transcription_result', function(data) {
+    console.log("Received transcription:", data.letter);
+    // Optionally display it in the UI
+    document.getElementById("live-transcript").innerText += data.letter;
+});

@@ -11,6 +11,8 @@ import shutil
 from sklearn.feature_extraction.text import HashingVectorizer
 import numpy as np
 import soundfile as sf
+from pydub import AudioSegment
+
 from PyBreathTranscript import transcript as bt
 
 from tools import optimize_audio, create_waveform
@@ -22,6 +24,8 @@ UPLOAD_FOLDER = '/data'
 MODELS_FOLDER = 'models'
 
 IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
+
+CHUNK_LENGTH = 200
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
 ie_fingerprint_model = joblib.load(IE_MODEL_FILE)
@@ -35,7 +39,10 @@ app.config.update(
     TEMPLATES_AUTO_RELOAD=True
 )
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.secret_key = '06b6fe97b6c33791a0a48a0266fd86a9'
+
 socketio = SocketIO(app)
+
 
 # File to which audio chunks are appended in binary mode.
 RECORDING_FILE = "recording.webm"
@@ -45,9 +52,9 @@ with open(RECORDING_FILE, "wb") as f:
     pass
 
 
-
 @app.route('/')
 def index():
+    session["chunks"] = 0
     return render_template("index.html")
 
 
@@ -66,6 +73,19 @@ def handle_audio_chunk(chunk):
         f.write(chunk)
     
     last_timestamp = current_timestamp  # Store last timestamp for debugging
+    session["chunks"] += 1
+    chunk_output = "temp_chunk.wav"
+
+    subprocess.run([
+        "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", chunk_output
+        ])
+    chunk_audio = AudioSegment.from_wav(chunk_output)
+    chunk_audio = chunk_audio[CHUNK_LENGTH*(session["chunks"] - 1):]
+    chunk_audio.export(chunk_output, format='wav')
+    best_letter = bt.transcript_chunk(chunk_output)
+    socketio.emit('transcription_result', {'letter': best_letter})
+
+        
     # print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
     # Optionally, you can add any logic (logging, broadcasting, etc.) here.
 
@@ -136,7 +156,7 @@ def save_file():
         recording_time = t.strftime('%d.%m.%Y %X')
 
 
-        transcript = bt.transcript(output_filename, method=bt.FINGERPRINT)
+        transcript = bt.transcript(output_filename)
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
