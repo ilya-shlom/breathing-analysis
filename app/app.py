@@ -27,6 +27,16 @@ IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
 
 CHUNK_LENGTH = 200
 
+CUT_FILE = 0
+CUT_LETTERS = 1
+CUTTING_MODE = CUT_LETTERS
+
+user_data = {
+    "chunks": 0,
+    "transcript": ""
+}
+
+
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
 ie_fingerprint_model = joblib.load(IE_MODEL_FILE)
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript.pkl")
@@ -54,7 +64,6 @@ with open(RECORDING_FILE, "wb") as f:
 
 @app.route('/')
 def index():
-    session["chunks"] = 0
     return render_template("index.html")
 
 
@@ -73,18 +82,20 @@ def handle_audio_chunk(chunk):
         f.write(chunk)
     
     last_timestamp = current_timestamp  # Store last timestamp for debugging
-    session["chunks"] += 1
+    user_data["chunks"] += 1
     chunk_output = "temp_chunk.wav"
 
     subprocess.run([
         "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", chunk_output
         ])
     chunk_audio = AudioSegment.from_wav(chunk_output)
-    chunk_audio = chunk_audio[CHUNK_LENGTH*(session["chunks"] - 1):CHUNK_LENGTH*(session["chunks"])]
+    chunk_audio = chunk_audio[CHUNK_LENGTH*(user_data["chunks"] - 1):CHUNK_LENGTH*(user_data["chunks"])]
     chunk_audio.export(chunk_output, format='wav')
     optimize_audio.optimize_once(chunk_output, chunk_output, 0)
 
     best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
+    user_data["transcript"] += best_letter
+    print("session transcript: ", user_data["transcript"])
     socketio.emit('transcription_result', {'letter': best_letter})
 
         
@@ -157,8 +168,14 @@ def save_file():
 
         recording_time = t.strftime('%d.%m.%Y %X')
 
-
-        transcript = bt.transcript(output_filename, bt.FINGERPRINT)
+        if CUTTING_MODE == CUT_FILE:
+            transcript = bt.transcript(output_filename, bt.FINGERPRINT)
+        elif CUTTING_MODE == CUT_LETTERS:
+            chunks_amount = user_data["chunks"]
+            transcript = user_data["transcript"]
+            transcript = transcript[len(transcript) - chunks_amount:]
+            print("chunks & transcript: ", chunks_amount, transcript)
+            user_data["chunks"] = 0
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
