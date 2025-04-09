@@ -39,7 +39,7 @@ app.config.update(
     TEMPLATES_AUTO_RELOAD=True
 )
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.secret_key = '06b6fe97b6c33791a0a48a0266fd86a9'
+app.secret_key = 'tempkey'
 
 socketio = SocketIO(app)
 
@@ -80,9 +80,11 @@ def handle_audio_chunk(chunk):
         "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", chunk_output
         ])
     chunk_audio = AudioSegment.from_wav(chunk_output)
-    chunk_audio = chunk_audio[CHUNK_LENGTH*(session["chunks"] - 1):]
+    chunk_audio = chunk_audio[CHUNK_LENGTH*(session["chunks"] - 1):CHUNK_LENGTH*(session["chunks"])]
     chunk_audio.export(chunk_output, format='wav')
-    best_letter = bt.transcript_chunk(chunk_output)
+    optimize_audio.optimize_once(chunk_output, chunk_output, 0)
+
+    best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
     socketio.emit('transcription_result', {'letter': best_letter})
 
         
@@ -156,7 +158,7 @@ def save_file():
         recording_time = t.strftime('%d.%m.%Y %X')
 
 
-        transcript = bt.transcript(output_filename)
+        transcript = bt.transcript(output_filename, bt.FINGERPRINT)
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
