@@ -215,15 +215,15 @@ def save_file():
 def remove_file():
     if request.method == "POST":
         prefix = request.form.get("prefix")
-        recording_time = t.strftime('%d.%m.%Y_%X')
+        recording_time = t.strftime('%d.%m.%Y_%H.%M.%S')
         try:
             if os.path.exists(RECORDING_FILE):
-                final_filename = f'web_recordings/{prefix}/audio/{prefix}_full_{recording_time}.wav'
+                final_filename = os.path.abspath(f'web_recordings/{prefix}/audio/{prefix}_full_{recording_time}.wav')
                 subprocess.run([
                     "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", final_filename
                     ])
                 os.remove(RECORDING_FILE)
-                return jsonify({"final_filename": final_filename}), 200
+                return send_file(final_filename, mimetype='audio/wav', as_attachment=True)
             else:
                 return jsonify({"message": "File not found"}), 404
         except Exception as e:

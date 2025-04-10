@@ -85,11 +85,15 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         });
 
         if (response.ok) {
-            console.log("Recording finished & file removed.");
-            const textResponse = await response.text();
-            const data = JSON.parse(textResponse);
-            window.final_filename = data.final_filename;
-
+            console.log("Recording finished, playing audio.");
+            const blob = await response.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            const wavesurfer = WaveSurfer.create({...window.options, url: audioUrl})
+            
+              wavesurfer.on('interaction', () => {
+                wavesurfer.play()
+              })
         } else {
             console.error("Failed to send request.");
         }
