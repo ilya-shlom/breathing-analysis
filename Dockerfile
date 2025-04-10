@@ -15,6 +15,8 @@ RUN apk add --no-cache \
     
 RUN pip install setuptools
 
+RUN apt install python3-pyaudio
+
 COPY requirements.txt /app
 
 RUN pip install -r /app/requirements.txt
