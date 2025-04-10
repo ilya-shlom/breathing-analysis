@@ -1,5 +1,5 @@
---extra-index-url https://test.pypi.org/simple/
-PyBreathTranscript==0.2.0
+# --extra-index-url https://test.pypi.org/simple/
+# PyBreathTranscript==0.2.0
 Flask==3.1.0
 flask-socketio==5.5.1
 jupyter==1.1.1
