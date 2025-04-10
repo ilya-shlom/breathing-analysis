@@ -1,0 +1,14 @@
+Flask==3.1.0
+flask-socketio==5.5.1
+jupyter==1.1.1
+matplotlib==3.9.2
+pandas==2.2.3
+PyAudio==0.2.14
+pyAudioAnalysis==0.3.14
+pydub==0.25.1
+scikit-learn==1.5.2
+tqdm==4.67.0
+numpy==2.2.3
+librosa==0.10.2
+eyed3==0.9.7
+pyOpenSSL==25.0.0
