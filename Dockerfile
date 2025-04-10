@@ -21,7 +21,7 @@ COPY requirements.txt /app
 
 RUN pip install -r /app/requirements.txt
 
-RUN pip install -i https://test.pypi.org/simple/ PyBreathTranscript==0.2.0 
+RUN pip install -i https://test.pypi.org/simple/ PyBreathTranscript==0.2.1
 
 COPY ./app /app
 
