@@ -240,6 +240,6 @@ def remove_file():
 #         return data
 
 
-if __name__ == "__main__":
-    # app.secret_key = os.urandom(30).hex()
-    socketio.run(app, host='0.0.0.0', port='5001', debug=True, ssl_context="adhoc")
+# if __name__ == "__main__":
+#     # app.secret_key = os.urandom(30).hex()
+#     socketio.run(app, host='0.0.0.0', port='5001', debug=True, ssl_context="adhoc")
