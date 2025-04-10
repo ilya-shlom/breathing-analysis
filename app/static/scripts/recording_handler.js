@@ -3,6 +3,7 @@ const socket = io();
 let mediaRecorder;
 let stream;
 let last_time = document.getElementById('stopwatch').innerHTML;
+window.cuts = [last_time];
 
 async function sendData() {
     const formData = new FormData(document.getElementById('audio-sender'));
@@ -76,6 +77,9 @@ document.getElementById('mic-stop').addEventListener('click', async () => {
     stopStopwatch();
 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
+    last_time = document.getElementById('stopwatch').innerHTML;
+    window.cuts.push(last_time);
+    console.log(cuts);
     stream.getTracks().forEach(track => track.stop());
     const formData = new FormData(document.getElementById('audio-sender'));
     try {
@@ -106,6 +110,7 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
 document.getElementById('mic-cut').addEventListener('click', async () => {
     sendData();
     last_time = document.getElementById('stopwatch').innerHTML;
+    window.cuts.push(last_time);
     // if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
         if (document.getElementById('step').innerHTML === "inhale") 
             document.getElementById('step').innerHTML = "exhale";
