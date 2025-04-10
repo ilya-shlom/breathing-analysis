@@ -12,7 +12,6 @@ function timeStringToSeconds(timeStr) {
 
 async function sendData() {
     const formData = new FormData(document.getElementById('audio-sender'));
-    console.log(formData);
     formData.append('last_time', last_time);
     formData.append('current_step', document.getElementById('step').innerHTML);
 
@@ -96,7 +95,6 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             console.log("Recording finished, playing audio.");
             const blob = await response.blob();
             const audioUrl = URL.createObjectURL(blob);
-            const audio = new Audio(audioUrl);
 
             // WaveSurfer
             const regions = WaveSurfer.Regions.create();
@@ -145,7 +143,6 @@ document.getElementById('mic-cut').addEventListener('click', async () => {
 
 
 socket.on('transcription_result', function(data) {
-    console.log("Received transcription:", data.letter);
     // Optionally display it in the UI
     document.getElementById("live-transcript").innerText += data.letter;
 });

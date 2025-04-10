@@ -95,7 +95,6 @@ def handle_audio_chunk(chunk):
 
     best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
     user_data["transcript"] += best_letter
-    print("session transcript: ", user_data["transcript"])
     socketio.emit('transcription_result', {'letter': best_letter})
 
         
@@ -122,7 +121,6 @@ def transcript():
 @app.route('/cut', methods=['GET', 'POST'])
 def save_file():
     if request.method == "POST":
-        print(request.form)
         prefix, record_type, mode, current_step, time, update = fetch_file_data(request, ["prefix",
                                                                                 "record_type",
                                                                                 "mode", 
