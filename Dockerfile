@@ -1,4 +1,4 @@
-FROM tiangolo/uwsgi-nginx-flask:python3.11-alpine
+FROM tiangolo/uwsgi-nginx:python3.11
 
 
 RUN apk update && apk upgrade
