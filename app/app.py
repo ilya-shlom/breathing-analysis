@@ -29,7 +29,7 @@ CHUNK_LENGTH = 200
 
 CUT_FILE = 0
 CUT_LETTERS = 1
-CUTTING_MODE = CUT_LETTERS
+CUTTING_MODE = CUT_FILE
 
 user_data = {
     "chunks": 0,
@@ -49,7 +49,7 @@ app.config.update(
     TEMPLATES_AUTO_RELOAD=True
 )
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.secret_key = 'tempkey'
+# app.secret_key = 'tempkey'
 
 socketio = SocketIO(app)
 
