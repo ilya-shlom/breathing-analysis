@@ -1,4 +1,4 @@
-FROM tiangolo/uwsgi-nginx:python3.11
+FROM python:3.11-slim@sha256:82c07f2f6e35255b92eb16f38dbd22679d5e8fb523064138d7c6468e7bf0c15b
 
 
 RUN apt update && apt upgrade -y
@@ -27,4 +27,4 @@ COPY ./app /app
 
 EXPOSE 8080
 
-CMD ["python", "main.py"]
+CMD ["python3", "main.py"]
