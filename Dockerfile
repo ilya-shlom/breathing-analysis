@@ -26,3 +26,5 @@ RUN pip install -i https://test.pypi.org/simple/ PyBreathTranscript==0.2.1
 COPY ./app /app
 
 EXPOSE 8080
+
+CMD ["python", "/app/main.py"]
