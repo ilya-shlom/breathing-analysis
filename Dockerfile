@@ -6,7 +6,7 @@ RUN apt update && apt upgrade -y
 RUN apt install -y \
     python3-dev \
     musl-dev \
-    openssl-dev \
+    # openssl-dev \
     libffi-dev \
     make \
     gcc \
