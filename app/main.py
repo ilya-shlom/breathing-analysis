@@ -1,5 +1,5 @@
-from webapp import app
+from webapp import app, socketio
 
 
 if __name__ == '__main__':       
-    app.run(host='0.0.0.0', debug=True, port=8080)
+    socketio.run(host='0.0.0.0', debug=True, port=8080)
