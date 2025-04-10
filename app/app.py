@@ -64,6 +64,10 @@ with open(RECORDING_FILE, "wb") as f:
 
 @app.route('/')
 def index():
+    user_data = {
+    "chunks": 0,
+    "transcript": ""
+    }
     return render_template("index.html")
 
 
