@@ -1,9 +1,9 @@
 FROM tiangolo/uwsgi-nginx:python3.11
 
 
-RUN apt update && apt upgrade
+RUN apt update && apt upgrade -y
 
-RUN apt add --no-cache \
+RUN apt install -y \
     python3-dev \
     musl-dev \
     openssl-dev \
@@ -15,7 +15,7 @@ RUN apt add --no-cache \
     
 RUN pip install setuptools
 
-RUN apt install python3-pyaudio
+RUN apt install python3-pyaudio -y
 
 COPY requirements.txt /app
 
