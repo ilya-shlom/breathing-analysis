@@ -3,7 +3,12 @@ const socket = io();
 let mediaRecorder;
 let stream;
 let last_time = document.getElementById('stopwatch').innerHTML;
-window.cuts = [last_time];
+let cuts = [last_time];
+
+function timeStringToSeconds(timeStr) {
+    const [hours, minutes, seconds, milliseconds] = timeStr.split(':').map(Number);
+    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  }
 
 async function sendData() {
     const formData = new FormData(document.getElementById('audio-sender'));
@@ -78,8 +83,7 @@ document.getElementById('mic-stop').addEventListener('click', async () => {
 if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
     last_time = document.getElementById('stopwatch').innerHTML;
-    window.cuts.push(last_time);
-    console.log(cuts);
+    cuts.push(last_time);
     stream.getTracks().forEach(track => track.stop());
     const formData = new FormData(document.getElementById('audio-sender'));
     try {
@@ -93,11 +97,31 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             const blob = await response.blob();
             const audioUrl = URL.createObjectURL(blob);
             const audio = new Audio(audioUrl);
-            const wavesurfer = WaveSurfer.create({...window.options, url: audioUrl})
+
+            // WaveSurfer
+            const regions = WaveSurfer.Regions.create();
+            const wavesurfer = WaveSurfer.create({...window.options, url: audioUrl, plugins: [regions]})
             
               wavesurfer.on('interaction', () => {
                 wavesurfer.play()
               })
+
+              wavesurfer.on('decode', () => {
+                for (let i = 0; i < cuts.length - 1; i++) {
+                    regions.addRegion({
+                        start: timeStringToSeconds(cuts[i]),
+                        end: timeStringToSeconds(cuts[i + 1]),
+                        content: i % 2 === 0 ? 'Inhale' : 'Exhale',
+                        color: i % 2 === 0 ? "rgba(174, 255, 147, 0.5)" : "rgba(147, 188, 255, 0.5)",
+                        drag: false,
+                        resize: false,
+                    })
+            }
+              })
+
+            //   wavesurfer.on('decode', () => {
+                
+                // })
         } else {
             console.error("Failed to send request.");
         }
@@ -110,7 +134,7 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
 document.getElementById('mic-cut').addEventListener('click', async () => {
     sendData();
     last_time = document.getElementById('stopwatch').innerHTML;
-    window.cuts.push(last_time);
+    cuts.push(last_time);
     // if (document.querySelector('input[name="record_type"]:checked').value === "manual_ie") {
         if (document.getElementById('step').innerHTML === "inhale") 
             document.getElementById('step').innerHTML = "exhale";
