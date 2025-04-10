@@ -19,7 +19,7 @@ RUN apt install python3-pyaudio -y
 
 COPY requirements.txt /app
 
-RUN pip install -r /app/requirements.txt
+RUN pip install -r requirements.txt
 
 RUN pip install -i https://test.pypi.org/simple/ PyBreathTranscript==0.2.1
 
