@@ -1,9 +1,9 @@
 FROM tiangolo/uwsgi-nginx:python3.11
 
 
-RUN apk update && apk upgrade
+RUN apt update && apt upgrade
 
-RUN apk add --no-cache \
+RUN apt add --no-cache \
     python3-dev \
     musl-dev \
     openssl-dev \
