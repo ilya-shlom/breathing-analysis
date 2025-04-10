@@ -6,7 +6,6 @@ jupyter==1.1.1
 matplotlib==3.9.2
 pandas==2.2.3
 PyAudio==0.2.14
-pyAudioAnalysis==0.3.14
 pydub==0.25.1
 scikit-learn==1.5.2
 tqdm==4.67.0

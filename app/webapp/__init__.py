@@ -16,7 +16,6 @@ from pydub import AudioSegment
 from PyBreathTranscript import transcript as bt
 
 from tools import optimize_audio, create_waveform
-from tools.get_features import get_features_frame
 
 from src.utils import *
 
