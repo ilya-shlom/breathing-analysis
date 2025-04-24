@@ -23,9 +23,9 @@
         <div>
             <form id="audio-sender">
                 <input type="text" id="prefix" name="prefix" value="a" placeholder="Folder/file prefix"><br>
-                <input type="radio" name="record_type" value="manual_ie" onclick="document.getElementById('start').style.display='block'"><label>Periodic inhale/exhale</label>
+                <input type="radio" name="record_type" value="manual_ie" checked onclick="document.getElementById('start').style.display='block'"><label>Periodic inhale/exhale</label>
                 <input type="radio" name="record_type" value="automatic_ie" onclick="document.getElementById('start').style.display='none'"><label>Automatic inhale/exhale</label><br><br>
-                <input type="radio" name="mode" value="manual_activity" onclick="document.getElementById('prefix').placeholder='Folder/file prefix'"><label>Manual activity</label>
+                <input type="radio" name="mode" value="manual_activity" checked onclick="document.getElementById('prefix').placeholder='Folder/file prefix'"><label>Manual activity</label>
                 <input type="radio" name="mode" value="automatic_activity" onclick="document.getElementById('prefix').placeholder='Folder name'"><label>Automatic activity</label><br><br>
                 <input type="checkbox" name="update" id="update"><label>Update model</label><br><br>
             </form>
