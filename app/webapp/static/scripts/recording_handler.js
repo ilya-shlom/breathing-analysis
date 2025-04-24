@@ -151,6 +151,11 @@ socket.on('transcription_result', function(data) {
     document.getElementById("live-transcript").innerText += data.letter;
 });
 
+socket.on('silence', function(data) {
+    // automatically cut if silence detected
+    document.getElementById('mic-cut').click();
+});
+
 socket.on('connect', () => {
     sid = socket.id;
 })

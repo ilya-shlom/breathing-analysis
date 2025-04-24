@@ -3,6 +3,7 @@ eventlet.monkey_patch()
 
 import os
 import time as t
+import re
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_file
 from flask_socketio import SocketIO
@@ -30,6 +31,11 @@ IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
 
 CHUNK_LENGTH = 200
 RATE = 44100
+
+SILENCE_LENGTH = 3
+LETTERS_BEFORE_SILENCE = 3
+SILENCE_VALIDATION = SILENCE_LENGTH + LETTERS_BEFORE_SILENCE
+SILENCE_PATTERN = rf'^[^_]{{{LETTERS_BEFORE_SILENCE}}}[_]{{{SILENCE_LENGTH}}}$'
 
 CUT_FILE = 0
 CUT_LETTERS = 1
@@ -97,7 +103,8 @@ def handle_audio_chunk(chunk):
         f.write(chunk)
     client_data[sid]["chunks"] += 1
     # process in background to avoid blocking the event loop
-    socketio.start_background_task(process_chunk, sid, filename)
+    bg_task = socketio.start_background_task(process_chunk, sid, filename)
+        
 
         
     # print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
@@ -272,6 +279,11 @@ def process_chunk(sid, filename):
     client_data[sid]["transcript"] += letter
     # emit back to the same client only
     socketio.emit('transcription_result', {'letter': letter}, room=sid)
+    if len(client_data[sid]["transcript"]) > SILENCE_VALIDATION:
+        silence_check = client_data[sid]["transcript"][-SILENCE_VALIDATION:]
+        if re.match(SILENCE_PATTERN, silence_check):
+            print("SILENCE DETECTED")
+            socketio.emit('silence', {'silence': True}, room=sid)
 
 
 if __name__ == "__main__":
