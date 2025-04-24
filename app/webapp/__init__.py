@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import os
 import time as t
 
@@ -32,10 +35,23 @@ CUT_FILE = 0
 CUT_LETTERS = 1
 CUTTING_MODE = CUT_LETTERS
 
-user_data = {
-    "chunks": 0,
-    "transcript": ""
-}
+
+app = Flask(__name__)
+app.secret_key = os.urandom(24).hex()
+app.config.update(
+    TEMPLATES_AUTO_RELOAD=True
+)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# app.secret_key = 'tempkey'
+
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins='*')
+
+@socketio.on('connect')
+def handle_connect():
+    session['socket_id'] = request.sid
+
+from collections import defaultdict
+client_data = defaultdict(lambda: {"chunks": 0, "transcript": "", "last_transcript_length": 0})
 
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
@@ -45,22 +61,12 @@ transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript_breath.pkl")
 hash_vectorizer = HashingVectorizer(analyzer='char_wb', ngram_range=(3, 5), n_features=50)
 
 
-app = Flask(__name__)
-app.config.update(
-    TEMPLATES_AUTO_RELOAD=True
-)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# app.secret_key = 'tempkey'
-
-socketio = SocketIO(app)
-
-
 # File to which audio chunks are appended in binary mode.
-RECORDING_FILE = "recording.webm"
+RECORDING_FILE_TEMPLATE = "recording_{sid}.webm"
 
 # Ensure the recording file exists/starts empty.
-with open(RECORDING_FILE, "wb") as f:
-    pass
+# with open(RECORDING_FILE, "wb") as f:
+#     pass
 
 
 @app.route('/')
@@ -76,32 +82,22 @@ def index():
 def audio():
     # Serve the current recording.
     # Note: Depending on your OS, reading a file while it's being written to may require extra care.
-    return send_file(RECORDING_FILE, mimetype='audio/webm')
+    # Reminder: include 'sid' as a query parameter (?sid=...) if needed.
+    sid = request.args.get('sid') or session.get('socket_id')
+    if not sid:
+        return jsonify({"error": "Session not initialized"}), 400
+    return send_file(RECORDING_FILE_TEMPLATE.format(sid=sid), mimetype='audio/webm')
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(chunk):
-    global last_timestamp  
-    current_timestamp = t.time()  
-    # 'chunk' is binary data from the client.
-    with open(RECORDING_FILE, "ab") as f:
+    sid = request.sid
+    filename = RECORDING_FILE_TEMPLATE.format(sid=sid)
+    # ensure per-client recording file exists
+    with open(filename, "ab") as f:
         f.write(chunk)
-    
-    last_timestamp = current_timestamp  # Store last timestamp for debugging
-    user_data["chunks"] += 1
-    chunk_output = "temp_chunk.wav"
-
-    subprocess.run([
-        "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", chunk_output
-        ])
-    chunk_audio = AudioSegment.from_wav(chunk_output)
-    chunk_audio = chunk_audio[CHUNK_LENGTH*(user_data["chunks"] - 1):CHUNK_LENGTH*(user_data["chunks"])]
-    chunk_audio.export(chunk_output, format='wav')
-    optimize_audio.optimize_once(chunk_output, chunk_output, 0)
-
-    # best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
-    best_letter = get_recognizer().process_chunk(chunk_audio, RATE)
-    user_data["transcript"] += best_letter
-    socketio.emit('transcription_result', {'letter': best_letter})
+    client_data[sid]["chunks"] += 1
+    # process in background to avoid blocking the event loop
+    socketio.start_background_task(process_chunk, sid, filename)
 
         
     # print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
@@ -126,6 +122,15 @@ def transcript():
 
 @app.route('/cut', methods=['GET', 'POST'])
 def save_file():
+    print("""
+    --------------------------
+          CUT CLICKED
+    --------------------------
+    """)
+    # Reminder: include 'sid' as a form field for POST requests if needed.
+    sid = request.form.get('sid') or session.get('socket_id')
+    if not sid:
+        return jsonify({"error": "Session not initialized"}), 400
     if request.method == "POST":
         prefix, record_type, mode, current_step, time, update = fetch_file_data(request, ["prefix",
                                                                                 "record_type",
@@ -140,7 +145,7 @@ def save_file():
         # print(prefix)
         filename = "temp.webm"
         # filename = request.files["prefix"] + "/" + filename
-        shutil.copy(RECORDING_FILE, filename)
+        shutil.copy(RECORDING_FILE_TEMPLATE.format(sid=sid), filename)
 
 
         # change codec
@@ -167,19 +172,18 @@ def save_file():
         # get transcript
         # output_filename_debug = f'web_recordings/{prefix}/mod_{prefix}_{current_step}_{starting_point}.wav'
         time_split = time.split(':')
-        cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
-        optimize_audio.optimize_once(output_filename, output_filename, cutout)
+        # cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
+        # optimize_audio.optimize_once(output_filename, output_filename, cutout)
 
         recording_time = t.strftime('%d.%m.%Y %X')
 
         if CUTTING_MODE == CUT_FILE:
             transcript = bt.transcript(output_filename, bt.FINGERPRINT)
         elif CUTTING_MODE == CUT_LETTERS:
-            chunks_amount = user_data["chunks"]
-            transcript = user_data["transcript"][:]
-            transcript = transcript[len(transcript) - chunks_amount:]
-            print("chunks & transcript: ", chunks_amount, transcript)
-            user_data["chunks"] = 0
+            full_transcript = client_data[sid]["transcript"]
+            last_length = client_data[sid].get("last_transcript_length", 0)
+            transcript = full_transcript[last_length:]
+            client_data[sid]["last_transcript_length"] = len(full_transcript)
 
         # Inhale/Exhale detection
         if record_type == "automatic_ie":
@@ -217,16 +221,26 @@ def save_file():
 
 @app.route('/stop', methods=['GET', 'POST'])
 def remove_file():
+    print("""
+    --------------------------
+          STOP CLICKED
+    --------------------------
+    """)
+    # Reminder: include 'sid' as a form field for POST requests if needed.
+    sid = request.form.get('sid') or session.get('socket_id')
+    if not sid:
+        return jsonify({"error": "Session not initialized"}), 400
     if request.method == "POST":
         prefix = request.form.get("prefix")
         recording_time = t.strftime('%d.%m.%Y_%H.%M.%S')
         try:
-            if os.path.exists(RECORDING_FILE):
+            filename = RECORDING_FILE_TEMPLATE.format(sid=sid)
+            if os.path.exists(filename):
                 final_filename = os.path.abspath(f'web_recordings/{prefix}/audio/{prefix}_full_{recording_time}.wav')
                 subprocess.run([
-                    "ffmpeg", "-y", "-fflags", "+genpts", "-i", RECORDING_FILE, "-ar", "44100", "-ac", "2", "-f", "wav", final_filename
+                    "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", final_filename
                     ])
-                os.remove(RECORDING_FILE)
+                os.remove(filename)
                 return send_file(final_filename, mimetype='audio/wav', as_attachment=True)
             else:
                 return jsonify({"message": "File not found"}), 404
@@ -241,7 +255,25 @@ def remove_file():
 #         print(data)
 #         return data
 
+def process_chunk(sid, filename):
+    # convert to wav
+    chunk_output = f"temp_chunk_{sid}.wav"
+    subprocess.run([
+        "ffmpeg", "-y", "-fflags", "+genpts",
+        "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", chunk_output
+    ])
+    audio = AudioSegment.from_wav(chunk_output)
+    chunk_index = client_data[sid]["chunks"] - 1
+    audio = audio[CHUNK_LENGTH*chunk_index : CHUNK_LENGTH*(chunk_index+1)]
+    audio.export(chunk_output, format='wav')
+    optimize_audio.optimize_once(chunk_output, chunk_output, 0)
+    # get letter
+    letter = get_recognizer().process_chunk(audio, RATE)
+    client_data[sid]["transcript"] += letter
+    # emit back to the same client only
+    socketio.emit('transcription_result', {'letter': letter}, room=sid)
+
 
 if __name__ == "__main__":
     # app.secret_key = os.urandom(30).hex()
-    socketio.run(app, host='0.0.0.0', port='5001', debug=True, ssl_context="adhoc")
+    socketio.run(app, host='0.0.0.0', port='5001', debug=True)
