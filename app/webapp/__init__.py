@@ -14,6 +14,7 @@ import soundfile as sf
 from pydub import AudioSegment
 
 from PyBreathTranscript import transcript as bt
+from PyBreathTranscript.transcript_dtw import get_recognizer
 
 from tools import optimize_audio, create_waveform
 
@@ -25,10 +26,11 @@ MODELS_FOLDER = 'models'
 IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
 
 CHUNK_LENGTH = 200
+RATE = 44100
 
 CUT_FILE = 0
 CUT_LETTERS = 1
-CUTTING_MODE = CUT_FILE
+CUTTING_MODE = CUT_LETTERS
 
 user_data = {
     "chunks": 0,
@@ -96,7 +98,8 @@ def handle_audio_chunk(chunk):
     chunk_audio.export(chunk_output, format='wav')
     optimize_audio.optimize_once(chunk_output, chunk_output, 0)
 
-    best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
+    # best_letter = bt.transcript_chunk(chunk_output, bt.FINGERPRINT)
+    best_letter = get_recognizer().process_chunk(chunk_audio, RATE)
     user_data["transcript"] += best_letter
     socketio.emit('transcription_result', {'letter': best_letter})
 
@@ -173,7 +176,7 @@ def save_file():
             transcript = bt.transcript(output_filename, bt.FINGERPRINT)
         elif CUTTING_MODE == CUT_LETTERS:
             chunks_amount = user_data["chunks"]
-            transcript = user_data["transcript"]
+            transcript = user_data["transcript"][:]
             transcript = transcript[len(transcript) - chunks_amount:]
             print("chunks & transcript: ", chunks_amount, transcript)
             user_data["chunks"] = 0
