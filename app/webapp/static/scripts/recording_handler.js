@@ -4,6 +4,7 @@ let mediaRecorder;
 let stream;
 let last_time = document.getElementById('stopwatch').innerHTML;
 let cuts = [last_time];
+let sid;
 
 function timeStringToSeconds(timeStr) {
     const [hours, minutes, seconds, milliseconds] = timeStr.split(':').map(Number);
@@ -11,9 +12,11 @@ function timeStringToSeconds(timeStr) {
   }
 
 async function sendData() {
+    document.getElementById("live-transcript").innerText += "/";
     const formData = new FormData(document.getElementById('audio-sender'));
     formData.append('last_time', last_time);
     formData.append('current_step', document.getElementById('step').innerHTML);
+    formData.append('sid', sid);
 
     try {
         const response = await fetch("/cut", {
@@ -85,6 +88,7 @@ if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     cuts.push(last_time);
     stream.getTracks().forEach(track => track.stop());
     const formData = new FormData(document.getElementById('audio-sender'));
+    formData.append("sid", sid);
     try {
         const response = await fetch("/stop", {
             method: 'POST',
@@ -146,3 +150,7 @@ socket.on('transcription_result', function(data) {
     // Optionally display it in the UI
     document.getElementById("live-transcript").innerText += data.letter;
 });
+
+socket.on('connect', () => {
+    sid = socket.id;
+})
