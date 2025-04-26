@@ -273,7 +273,8 @@ def process_chunk(sid, filename):
     chunk_index = client_data[sid]["chunks"] - 1
     audio = audio[CHUNK_LENGTH*chunk_index : CHUNK_LENGTH*(chunk_index+1)]
     audio.export(chunk_output, format='wav')
-    optimize_audio.optimize_once(chunk_output, chunk_output, 0)
+    # optimize_audio.optimize_once(chunk_output, chunk_output, 0)
+    # audio_optimized = AudioSegment.from_wav(chunk_output)
     # get letter
     letter = get_recognizer().process_chunk(audio, RATE)
     client_data[sid]["transcript"] += letter
