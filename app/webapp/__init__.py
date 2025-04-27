@@ -32,8 +32,8 @@ IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
 CHUNK_LENGTH = 200
 RATE = 44100
 
-SILENCE_LENGTH = 3
-LETTERS_BEFORE_SILENCE = 3
+SILENCE_LENGTH = 2
+LETTERS_BEFORE_SILENCE = 2
 SILENCE_VALIDATION = SILENCE_LENGTH + LETTERS_BEFORE_SILENCE
 SILENCE_PATTERN = rf'^[^_]{{{LETTERS_BEFORE_SILENCE}}}[_]{{{SILENCE_LENGTH}}}$'
 
@@ -57,7 +57,7 @@ def handle_connect():
     session['socket_id'] = request.sid
 
 from collections import defaultdict
-client_data = defaultdict(lambda: {"chunks": 0, "transcript": "", "last_transcript_length": 0})
+client_data = defaultdict(lambda: {"chunks": 0, "transcript": "", "transcript_silence": "", "last_transcript_length": 0})
 
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
@@ -77,10 +77,6 @@ RECORDING_FILE_TEMPLATE = "recording_{sid}.webm"
 
 @app.route('/')
 def index():
-    user_data = {
-    "chunks": 0,
-    "transcript": ""
-    }
     return render_template("index.html")
 
 
@@ -276,12 +272,19 @@ def process_chunk(sid, filename):
     # optimize_audio.optimize_once(chunk_output, chunk_output, 0)
     # audio_optimized = AudioSegment.from_wav(chunk_output)
     # get letter
-    letter = get_recognizer().process_chunk(audio, RATE)
-    client_data[sid]["transcript"] += letter
+    # Run both transcription algorithms concurrently using eventlet
+    silence_checker = eventlet.spawn(get_recognizer().process_chunk, audio, RATE)
+    audio_fingerprint = eventlet.spawn(bt.transcript_chunk, chunk_output)
+    # Wait for both to finish
+    silence_symbol = silence_checker.wait()
+    transcript_symbol = audio_fingerprint.wait()
+    # Choose primary result by default; adjust merging logic as needed
+    client_data[sid]["transcript_silence"] += silence_symbol
+    client_data[sid]["transcript"] += transcript_symbol
     # emit back to the same client only
-    socketio.emit('transcription_result', {'letter': letter}, room=sid)
-    if len(client_data[sid]["transcript"]) > SILENCE_VALIDATION:
-        silence_check = client_data[sid]["transcript"][-SILENCE_VALIDATION:]
+    socketio.emit('transcription_result', {'letter': transcript_symbol}, room=sid)
+    if len(client_data[sid]["transcript_silence"]) > SILENCE_VALIDATION:
+        silence_check = client_data[sid]["transcript_silence"][-SILENCE_VALIDATION:]
         if re.match(SILENCE_PATTERN, silence_check):
             print("SILENCE DETECTED")
             socketio.emit('silence', {'silence': True}, room=sid)

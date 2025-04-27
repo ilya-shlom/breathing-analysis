@@ -108,7 +108,7 @@ async function buildProcessedStream (stream) {
 
   const hp = audioCtx.createBiquadFilter();
   hp.type = 'highpass';
-  hp.frequency.value = 90;
+  hp.frequency.value = 50;
 
   const gate = new AudioWorkletNode(audioCtx, 'gate-processor');
   gate.parameters.get('threshold').value = -45;
