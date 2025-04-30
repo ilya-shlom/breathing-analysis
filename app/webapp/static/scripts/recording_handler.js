@@ -161,6 +161,12 @@ async function buildProcessedStream (stream) {
 async function startRecording () {
   startStopwatch();
   document.getElementById('step').textContent = 'inhale';
+  const formData = new FormData(document.getElementById('audio-sender'));
+  formData.append('sid', sid);
+  try {
+    const r = await fetch('/start', { method: 'POST', body: formData });
+    if (!r.ok) return console.error('POST /start failed');
+  } catch (e) { console.error(e); }
   try {
     rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const processed = await buildProcessedStream(rawStream);

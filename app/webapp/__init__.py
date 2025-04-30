@@ -57,7 +57,11 @@ def handle_connect():
     session['socket_id'] = request.sid
 
 from collections import defaultdict
-client_data = defaultdict(lambda: {"chunks": 0, "transcript": "", "transcript_silence": "", "last_transcript_length": 0})
+client_data = defaultdict(lambda: {"chunks": 0, 
+                                   "transcript": "",
+                                   "transcript_silence": "", 
+                                   "last_transcript_length": 0,
+                                   "autosplit": False})
 
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
@@ -119,6 +123,36 @@ def transcript():
                             "transcript": result})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Method not allowed"}), 405
+
+
+@app.route('/start', methods=['GET', 'POST'])
+def get_start_params():
+    print("""
+    --------------------------
+        RECORDING STARTED
+    --------------------------
+    """)
+    sid = request.form.get('sid') or session.get('socket_id')
+    if not sid:
+        return jsonify({"error": "Session not initialized"}), 400
+    if request.method == "POST":
+        prefix, record_type, mode, current_step, time, update, autosplit = fetch_file_data(request, ["prefix",
+                                                                                "record_type",
+                                                                                "mode", 
+                                                                                "current_step", 
+                                                                                "last_time", 
+                                                                                "update",
+                                                                                "autosplit"])
+        client_data[sid]["autosplit"] = autosplit
+        return jsonify({"prefix": prefix,
+                        "record_type": record_type,
+                        "mode": mode,
+                        "current_step": current_step,
+                        "time": time,
+                        "update": update,
+                        "autosplit": autosplit})
     else:
         return jsonify({"error": "Method not allowed"}), 405
 
@@ -269,25 +303,25 @@ def process_chunk(sid, filename):
     chunk_index = client_data[sid]["chunks"] - 1
     audio = audio[CHUNK_LENGTH*chunk_index : CHUNK_LENGTH*(chunk_index+1)]
     audio.export(chunk_output, format='wav')
-    # optimize_audio.optimize_once(chunk_output, chunk_output, 0)
-    # audio_optimized = AudioSegment.from_wav(chunk_output)
-    # get letter
+
     # Run both transcription algorithms concurrently using eventlet
     silence_checker = eventlet.spawn(get_recognizer().process_chunk, audio, RATE)
     audio_fingerprint = eventlet.spawn(bt.transcript_chunk, chunk_output)
+
     # Wait for both to finish
     silence_symbol = silence_checker.wait()
     transcript_symbol = audio_fingerprint.wait()
-    # Choose primary result by default; adjust merging logic as needed
+
     client_data[sid]["transcript_silence"] += silence_symbol
     client_data[sid]["transcript"] += transcript_symbol
     # emit back to the same client only
     socketio.emit('transcription_result', {'letter': transcript_symbol}, room=sid)
-    if len(client_data[sid]["transcript_silence"]) > SILENCE_VALIDATION:
-        silence_check = client_data[sid]["transcript_silence"][-SILENCE_VALIDATION:]
-        if re.match(SILENCE_PATTERN, silence_check):
-            print("SILENCE DETECTED")
-            socketio.emit('silence', {'silence': True}, room=sid)
+    if client_data[sid]["autosplit"]:
+        if len(client_data[sid]["transcript_silence"]) > SILENCE_VALIDATION:
+            silence_check = client_data[sid]["transcript_silence"][-SILENCE_VALIDATION:]
+            if re.match(SILENCE_PATTERN, silence_check):
+                print("SILENCE DETECTED")
+                socketio.emit('silence', {'silence': True}, room=sid)
 
 
 if __name__ == "__main__":
