@@ -24,7 +24,10 @@ from tools import optimize_audio, create_waveform
 
 from src.utils import *
 
-UPLOAD_FOLDER = '/data'
+UPLOAD_FOLDER = 'development/dataset' # 'web_recordings'
+AUDIO_FOLDER = 'audio'
+GRAPH_FOLDER = 'graphs'
+
 MODELS_FOLDER = 'models'
 
 IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
@@ -40,6 +43,11 @@ SILENCE_PATTERN = rf'^[^_]{{{LETTERS_BEFORE_SILENCE}}}[_]{{{SILENCE_LENGTH}}}$'
 CUT_FILE = 0
 CUT_LETTERS = 1
 CUTTING_MODE = CUT_LETTERS
+
+DEV_MODE = 0
+DATA_COLLECT_MODE = 1
+PROD_MODE = 2
+APP_MODE = DATA_COLLECT_MODE
 
 
 app = Flask(__name__)
@@ -61,7 +69,8 @@ client_data = defaultdict(lambda: {"chunks": 0,
                                    "transcript": "",
                                    "transcript_silence": "", 
                                    "last_transcript_length": 0,
-                                   "autosplit": False})
+                                   "autosplit": False,
+                                   "data_collect_filename": ""})
 
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
@@ -145,14 +154,18 @@ def get_start_params():
                                                                                 "last_time", 
                                                                                 "update",
                                                                                 "autosplit"])
+        # TODO: fetch and apply prefix, record_type, mode, current_step, time, update in this endpoint
+        
         client_data[sid]["autosplit"] = autosplit
-        return jsonify({"prefix": prefix,
-                        "record_type": record_type,
-                        "mode": mode,
-                        "current_step": current_step,
-                        "time": time,
-                        "update": update,
-                        "autosplit": autosplit})
+        if APP_MODE == DATA_COLLECT_MODE:
+            # Find the next filename based on existing files in the upload folder
+            existing_files = [f for f in os.listdir(f"{UPLOAD_FOLDER}/inhale") if f.endswith(".wav")]
+            numbers = [int(re.match(r"(\d{4})\.wav", f).group(1)) for f in existing_files if re.match(r"\d{4}\.wav", f)]
+            next_number = max(numbers) + 1 if numbers else 1
+            client_data[sid]["data_collect_filename"] = f"{next_number:04d}"
+
+        return jsonify({"status": "success"}), 200
+    
     else:
         return jsonify({"error": "Method not allowed"}), 405
 
@@ -184,68 +197,73 @@ def save_file():
         # filename = request.files["prefix"] + "/" + filename
         shutil.copy(RECORDING_FILE_TEMPLATE.format(sid=sid), filename)
 
+        if APP_MODE == DEV_MODE:
+            # change codec
+            if not os.path.exists(f'{UPLOAD_FOLDER}/{prefix}'):
+                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}')
+                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/audio')
+                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/graphs')
 
-        # change codec
-        if not os.path.exists(f'web_recordings/{prefix}'):
-            os.makedirs(f'web_recordings/{prefix}')
-            os.makedirs(f'web_recordings/{prefix}/audio')
-            os.makedirs(f'web_recordings/{prefix}/graphs')
+            if record_type != "automatic_ie":
+                output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
+            else:
+                output_filename = 'temp_proccessed.wav'
+            subprocess.run([
+                "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
+                ])
 
-        if record_type != "automatic_ie":
-            output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
-        else:
-            output_filename = 'temp_proccessed.wav'
-        subprocess.run([
-            "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
+            time_split = time.split(':')
+            cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
+
+            recording_time = t.strftime('%d.%m.%Y %X')
+
+            if CUTTING_MODE == CUT_FILE:
+                transcript = bt.transcript(output_filename, bt.FINGERPRINT)
+            elif CUTTING_MODE == CUT_LETTERS:
+                full_transcript = client_data[sid]["transcript"]
+                last_length = client_data[sid].get("last_transcript_length", 0)
+                transcript = full_transcript[last_length:]
+                client_data[sid]["last_transcript_length"] = len(full_transcript)
+
+            # Inhale/Exhale detection
+            if record_type == "automatic_ie":
+                prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                print(f"Predicted class: {prediction}")
+                current_step_predicted = 'exhale' if prediction == 1 else 'inhale'
+                final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step_predicted}_{recording_time}.wav'
+                shutil.copyfile(output_filename, final_output_filename)
+            
+            # Update model
+            if update:
+                if current_step == current_step_predicted:
+                    ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
+                    with open(IE_MODEL_FILE, 'wb') as f:
+                        joblib.dump(ie_fingerprint_model, f)  
+
+            # Activity detection
+            if prefix.find('_auto') != -1:
+                detected_activity_cluster = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                prefix = 'Active' if detected_activity_cluster == 2 else 'Resting' if detected_activity_cluster == 1 else 'Other'
+            # transcript_prefix = f'{prefix} {current_step} {starting_point}: '
+
+            # create graph
+            graph_path = f'{UPLOAD_FOLDER}/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
+            create_waveform.create_waveform(output_filename, transcript, graph_path)
+
+        elif APP_MODE == DATA_COLLECT_MODE:
+            output_filename = f'{UPLOAD_FOLDER}/{current_step}/{client_data[sid]["data_collect_filename"]}.wav'
+            time_split = time.split(':')
+            cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
+
+            subprocess.run([
+                "ffmpeg", "-y", "-fflags", "+genpts", "-ss", str(cutout / 1000), "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
             ])
 
-        # data.save(output_filename)
-        # data.flush()
-        # data.close()
-        
-        print("finished subprocess")
-        # t.sleep(0.5)
-        
-        # get transcript
-        # output_filename_debug = f'web_recordings/{prefix}/mod_{prefix}_{current_step}_{starting_point}.wav'
-        time_split = time.split(':')
-        # cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
-        # optimize_audio.optimize_once(output_filename, output_filename, cutout)
+            if current_step == 'exhale':
+                next_number = int(client_data[sid]["data_collect_filename"]) + 1
+                client_data[sid]["data_collect_filename"] = f"{next_number:04d}"
 
-        recording_time = t.strftime('%d.%m.%Y %X')
 
-        if CUTTING_MODE == CUT_FILE:
-            transcript = bt.transcript(output_filename, bt.FINGERPRINT)
-        elif CUTTING_MODE == CUT_LETTERS:
-            full_transcript = client_data[sid]["transcript"]
-            last_length = client_data[sid].get("last_transcript_length", 0)
-            transcript = full_transcript[last_length:]
-            client_data[sid]["last_transcript_length"] = len(full_transcript)
-
-        # Inhale/Exhale detection
-        if record_type == "automatic_ie":
-            prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
-            print(f"Predicted class: {prediction}")
-            current_step_predicted = 'exhale' if prediction == 1 else 'inhale'
-            final_output_filename = f'web_recordings/{prefix}/audio/{prefix}_{current_step_predicted}_{recording_time}.wav'
-            shutil.copyfile(output_filename, final_output_filename)
-        
-        # Update model
-        if update:
-            if current_step == current_step_predicted:
-                ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
-                with open(IE_MODEL_FILE, 'wb') as f:
-                    joblib.dump(ie_fingerprint_model, f)  
-
-        # Activity detection
-        if prefix.find('_auto') != -1:
-            detected_activity_cluster = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
-            prefix = 'Active' if detected_activity_cluster == 2 else 'Resting' if detected_activity_cluster == 1 else 'Other'
-        # transcript_prefix = f'{prefix} {current_step} {starting_point}: '
-
-        # create graph
-        graph_path = f'web_recordings/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
-        create_waveform.create_waveform(output_filename, transcript, graph_path)
 
         return {
             'transcript' : transcript, 
