@@ -24,7 +24,7 @@ from tools import optimize_audio, create_waveform
 
 from src.utils import *
 
-UPLOAD_FOLDER = 'development/dataset' # 'web_recordings'
+UPLOAD_FOLDER = 'development/dataset_activities' # 'web_recordings'
 AUDIO_FOLDER = 'audio'
 GRAPH_FOLDER = 'graphs'
 
@@ -159,7 +159,7 @@ def get_start_params():
         client_data[sid]["autosplit"] = autosplit
         if APP_MODE == DATA_COLLECT_MODE:
             # Find the next filename based on existing files in the upload folder
-            existing_files = [f for f in os.listdir(f"{UPLOAD_FOLDER}/inhale") if f.endswith(".wav")]
+            existing_files = [f for f in os.listdir(f"{UPLOAD_FOLDER}/active") if f.endswith(".wav")]
             numbers = [int(re.match(r"(\d{4})\.wav", f).group(1)) for f in existing_files if re.match(r"\d{4}\.wav", f)]
             next_number = max(numbers) + 1 if numbers else 1
             client_data[sid]["data_collect_filename"] = f"{next_number:04d}"
@@ -208,12 +208,12 @@ def save_file():
                 output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
             else:
                 output_filename = 'temp_proccessed.wav'
-            subprocess.run([
-                "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
-                ])
-
+                
             time_split = time.split(':')
             cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
+            subprocess.run([
+                "ffmpeg", "-y", "-fflags", "+genpts", "-ss", str(cutout / 1000), "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
+            ])
 
             recording_time = t.strftime('%d.%m.%Y %X')
 
@@ -248,10 +248,10 @@ def save_file():
 
             # create graph
             graph_path = f'{UPLOAD_FOLDER}/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
-            create_waveform.create_waveform(output_filename, transcript, graph_path)
+            # create_waveform.create_waveform(output_filename, transcript, graph_path)
 
         elif APP_MODE == DATA_COLLECT_MODE:
-            output_filename = f'{UPLOAD_FOLDER}/{current_step}/{client_data[sid]["data_collect_filename"]}.wav'
+            output_filename = f'{UPLOAD_FOLDER}/active/{client_data[sid]["data_collect_filename"]}.wav'
             time_split = time.split(':')
             cutout = int(time_split[0]) * 3600 * 1000 + int(time_split[1]) * 60 * 1000 + int(time_split[2]) * 1000 + int(time_split[3])
 
@@ -259,9 +259,8 @@ def save_file():
                 "ffmpeg", "-y", "-fflags", "+genpts", "-ss", str(cutout / 1000), "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", output_filename
             ])
 
-            if current_step == 'exhale':
-                next_number = int(client_data[sid]["data_collect_filename"]) + 1
-                client_data[sid]["data_collect_filename"] = f"{next_number:04d}"
+            next_number = int(client_data[sid]["data_collect_filename"]) + 1
+            client_data[sid]["data_collect_filename"] = f"{next_number:04d}"
 
 
 
@@ -324,7 +323,7 @@ def process_chunk(sid, filename):
 
     # Run both transcription algorithms concurrently using eventlet
     silence_checker = eventlet.spawn(get_recognizer().process_chunk, audio, RATE)
-    audio_fingerprint = eventlet.spawn(bt.transcript_chunk, chunk_output)
+    audio_fingerprint = eventlet.spawn(bt.transcript_chunk, chunk_output, bt.WAVEFORM)
 
     # Wait for both to finish
     silence_symbol = silence_checker.wait()
