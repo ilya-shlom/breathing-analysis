@@ -34,7 +34,7 @@ import json
 import os
 import sys
 from pathlib import Path
-import soundfile as sf        #  add this
+import soundfile as sf
 
 
 import joblib
@@ -43,7 +43,8 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
 
 
 SR = 16_000               # Target sampling rate
@@ -88,7 +89,8 @@ def train(args):
     root = Path(args.data_dir)
     print(f"[INFO] Building dataset from {root.resolve()}")
     X, y, files = build_dataset(root)
-    print(f"[INFO] Samples: {len(y)}, inhale: {(y==0).sum()}, exhale: {(y==1).sum()}")
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    print(f"[INFO] Samples: {len(y_train)}, inhale: {(y_train==0).sum()}, exhale: {(y_train==1).sum()}")
 
     # ML pipeline: z‑score → logistic regression
     clf = Pipeline(
@@ -97,11 +99,11 @@ def train(args):
             ("lr", LogisticRegression(max_iter=1000, C=1.0)),
         ]
     )
-    clf.fit(X, y)
+    clf.fit(X_train, y_train)
 
     # Quick report (train‑set – for demo; use CV for real training)
-    y_pred = clf.predict(X)
-    print("[TRAIN—SET REPORT]\n", classification_report(y, y_pred))
+    y_pred = clf.predict(X_test)
+    print("[TRAIN—SET REPORT]\n", classification_report(y_test, y_pred))
 
     joblib.dump(clf, args.model_path)
     print(f"[OK] Model saved to {args.model_path}")
