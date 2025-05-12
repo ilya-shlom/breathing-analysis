@@ -24,7 +24,7 @@ from tools import optimize_audio, create_waveform
 
 from src.utils import *
 
-UPLOAD_FOLDER = 'development/dataset_activities' # 'web_recordings'
+UPLOAD_FOLDER = 'web_recordings' # 'web_recordings'
 AUDIO_FOLDER = 'audio'
 GRAPH_FOLDER = 'graphs'
 
@@ -47,7 +47,7 @@ CUTTING_MODE = CUT_LETTERS
 DEV_MODE = 0
 DATA_COLLECT_MODE = 1
 PROD_MODE = 2
-APP_MODE = DATA_COLLECT_MODE
+APP_MODE = DEV_MODE
 
 
 app = Flask(__name__)
