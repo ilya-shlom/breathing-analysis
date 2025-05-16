@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 
-/**
- * Bottom‑of‑screen panel that reproduces the UI shown in the screenshot.
- * Drop it anywhere inside a Next.js page – it is fixed to the viewport bottom.
- * This version is plain **JavaScript/JSX** (no TypeScript types).
- */
+
 export default function RecordingPanel() {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
@@ -30,7 +26,7 @@ export default function RecordingPanel() {
     <div className="fixed bottom-0 left-0 h-120 z-10 w-full rounded-t-4xl bg-[var(--bg-blue)] shadow-2xl">
       <div className="  flex flex-col justify-center items-center">
         {/* Tabs */}
-        <div className="flex my-3 gap-2 bg-[#80A8B6]/70 rounded-full text-md font-medium">
+        <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
           <button className="rounded-full bg-[#70919E] px-4 py-2 text-white shadow-lg cursor-pointer transition">
             Потоковая запись
           </button>
@@ -50,14 +46,13 @@ export default function RecordingPanel() {
             {/* Left column */}
             <div>
               {/* File name */}
-              <label className="mb-4 block">
+              <label className="mb-4 block w-120">
                 <input
                   type="text"
                   placeholder="Название файла"
                   className="w-full rounded-none border-2 border-black bg-white px-3 py-2 placeholder-black/40 focus:placeholder-black/20 focus:outline-none text-black transition"
                 />
               </label>
-
               <Checkbox
                 checked={autoBreath}
                 onChange={() => {
@@ -67,10 +62,11 @@ export default function RecordingPanel() {
                     () => setAutoBreathByAudio(false),
                   ]);
                 }}
+                className="mt-4"
                 label="Автоопределение вдоха/выдоха"
               />
 
-              <div className="mt-2 space-y-2 pl-6">
+              <div className="mt-6 space-y-2">
                 <Checkbox
                   checked={autoBreathByText}
                   disabled={!autoBreath}
@@ -86,14 +82,14 @@ export default function RecordingPanel() {
               </div>
 
               <Checkbox
-                className="mt-6"
+                className="mt-8"
                 checked={autoBreathMarkup}
                 onChange={() => setAutoBreathMarkup((v) => !v)}
                 label="Авторазметка дыхания"
               />
 
               <Checkbox
-                className="mt-6"
+                className="mt-18"
                 checked={sound}
                 onChange={() => setSound((v) => !v)}
                 label="Включить звук"
@@ -101,7 +97,7 @@ export default function RecordingPanel() {
             </div>
 
             {/* Right column */}
-            <div>
+            <div className="mt-17">
               <Checkbox
                 checked={autoActivity}
                 onChange={() => {
@@ -114,7 +110,7 @@ export default function RecordingPanel() {
                 label="Автоопределение активности"
               />
 
-              <div className="mt-2 space-y-2 pl-6">
+              <div className="mt-4 space-y-2">
                 <Checkbox
                   checked={autoActivityByText}
                   disabled={!autoActivity}
@@ -150,20 +146,20 @@ function Checkbox({ label, className = "", ...props }) {
       <span className="relative flex items-center">
         <input
           type="checkbox"
-          className="peer appearance-none w-5 h-5 border-2 border-black bg-white rounded-none transition-colors"
+          className="peer appearance-none w-7 h-7 border-2 border-black bg-white rounded-none transition-colors"
           {...props}
         />
         <svg
-          className="pointer-events-none absolute left-0 top-0 w-5 h-5 hidden peer-checked:block"
+          className="pointer-events-none absolute left-0 top-0 w-7 h-7 hidden peer-checked:block"
           fill="none"
           stroke="black"
           strokeWidth="3"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7 13l4 4L17 7" />
         </svg>
       </span>
-      <span className={props.disabled ? "text-white/50" : undefined}>
+      <span className={`text-lg ${props.disabled ? "text-white/50" : undefined}`}>
         {label}
       </span>
       {/* Tooltip icon */}

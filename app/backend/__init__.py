@@ -7,6 +7,8 @@ import re
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_file
 from flask_socketio import SocketIO
+from flask_cors import CORS
+
 import joblib
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -51,6 +53,7 @@ APP_MODE = DEV_MODE
 
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}}, supports_credentials=True)
 app.secret_key = os.urandom(24).hex()
 app.config.update(
     TEMPLATES_AUTO_RELOAD=True
@@ -58,7 +61,8 @@ app.config.update(
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # app.secret_key = 'tempkey'
 
-socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins='*')
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins=['http://localhost:3000'])
+
 
 @socketio.on('connect')
 def handle_connect():

@@ -54,7 +54,7 @@ const Stopwatch = forwardRef((props, ref) => {
   };
 
   return (
-    <span className={`${roboto.className} text-2xl`}>
+    <span className={`${roboto.className} text-2xl`} id="stopwatch">
       {formatTime(time)}
     </span>
   );
