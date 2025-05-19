@@ -74,6 +74,7 @@ function timeStringToSeconds (t) {
   const cleanupFns      = useRef([])
   const sidRef          = useRef(null)
   const wavesurferRef   = useRef(null)
+  const panelRef = useRef(null);
 
   const [liveText, setLiveText]       = useState('')
   const [rows, setRows]               = useState([])  // transcript table
@@ -190,6 +191,13 @@ function timeStringToSeconds (t) {
 
     const fd = new FormData()
     fd.append('sid', sidRef.current)
+    console.log(panelRef.current)
+    const panelData = panelRef.current?.getFormData?.();
+    if (panelData) {
+      Object.entries(panelData).forEach(([key, value]) => {
+        fd.append(key, value);
+      });
+    }    
     await fetch('http://127.0.0.1:5001/start', { method: 'POST', body: fd,   credentials: 'include', })
 
     try {
@@ -275,6 +283,7 @@ function timeStringToSeconds (t) {
     setIsRecording(true);
     startRecording();
     stopwatchRef.current?.start();
+    panelRef.current?.submit();
   };
 
   const handleStopRecording = () => {
@@ -317,7 +326,7 @@ function timeStringToSeconds (t) {
             )}
          </div>
         </div>
-        <RecordingPanel />
+        <RecordingPanel ref={panelRef} />
       </main>
       
     </div>

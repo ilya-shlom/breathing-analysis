@@ -151,13 +151,19 @@ def get_start_params():
     if not sid:
         return jsonify({"error": "Session not initialized"}), 400
     if request.method == "POST":
-        prefix, record_type, mode, current_step, time, update, autosplit = fetch_file_data(request, ["prefix",
-                                                                                "record_type",
-                                                                                "mode", 
-                                                                                "current_step", 
-                                                                                "last_time", 
-                                                                                "update",
-                                                                                "autosplit"])
+        filename, \
+        autoBreath, autoBreathByText, autoBreathByAudio, \
+        autoActivity, autoActivityByText, autoActivityByAudio, \
+        autosplit = fetch_file_data(request, ["fileName",
+                                            "autoBreath",
+                                            "autoBreathByText",
+                                            "autoBreathByAudio",
+                                            "autoActivity",
+                                            "autoActivityByText",
+                                            "autoActivityByAudio",
+                                            "autoBreathMarkup",])
+        print("-------- START DATA --------")
+        print(filename, autoBreath, autoBreathByText, autoBreathByAudio, autoActivity, autoActivityByText, autoActivityByAudio, autosplit)
         # TODO: fetch and apply prefix, record_type, mode, current_step, time, update in this endpoint
         
         client_data[sid]["autosplit"] = autosplit

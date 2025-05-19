@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 
-
-export default function RecordingPanel() {
+const RecordingPanel = forwardRef(({ onSubmit }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -16,13 +15,49 @@ export default function RecordingPanel() {
   const [autoBreathMarkup, setAutoBreathMarkup] = useState(false);
   const [sound, setSound] = useState(true);
 
+  const [fileName, setFileName] = useState("");
+
   // ────────────────────────── helpers ──────────────────────────
+
+  const formRef = useRef(null);
+
+  const handleSubmit = (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    const data = {
+      autoBreath,
+      autoBreathByText,
+      autoBreathByAudio,
+      autoActivity,
+      autoActivityByText,
+      autoActivityByAudio,
+      autoBreathMarkup,
+      sound,
+      fileName,
+    };
+    onSubmit?.(data);
+  };
+
+  useImperativeHandle(ref, () => ({
+    submit: handleSubmit,
+    getFormData: () => ({
+    autoBreath,
+    autoBreathByText,
+    autoBreathByAudio,
+    autoActivity,
+    autoActivityByText,
+    autoActivityByAudio,
+    autoBreathMarkup,
+    sound,
+    fileName,
+  }),
+  }));
   const resetIfDisabled = (parentChecked, setters) => {
     if (!parentChecked) setters.forEach((fn) => fn());
   };
 
   // ────────────────────────── render ──────────────────────────
   return (
+    <form ref={formRef} onSubmit={handleSubmit}>
     <div className="fixed bottom-0 left-0 h-120 z-10 w-full rounded-t-4xl bg-[var(--bg-blue)] shadow-2xl">
       <div className="  flex flex-col justify-center items-center">
         {/* Tabs */}
@@ -51,6 +86,8 @@ export default function RecordingPanel() {
                   type="text"
                   placeholder="Название файла"
                   className="w-full rounded-none border-2 border-black bg-white px-3 py-2 placeholder-black/40 focus:placeholder-black/20 focus:outline-none text-black transition"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
                 />
               </label>
               <Checkbox
@@ -129,8 +166,9 @@ export default function RecordingPanel() {
         </div>
       </div>
     </div>
+    </form>
   );
-}
+})
 
 /* -------------------------------------------------------------------------- */
 /*                                  helpers                                   */
@@ -172,3 +210,5 @@ function Checkbox({ label, className = "", ...props }) {
     </label>
   );
 }
+
+export default RecordingPanel;
