@@ -6,7 +6,7 @@ import io from 'socket.io-client'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js'
 
-const socket = io('http://localhost:5001');
+
 
 const GateProcessorCode = `
 class GateProcessor extends AudioWorkletProcessor {
@@ -48,7 +48,9 @@ registerProcessor('gate-processor', GateProcessor)
 export default function Home() {
   const stopwatchRef = useRef();
 
-  const [isRecording, setIsRecording] = useState(false);
+  const [socket, setSocket] = useState(0);
+
+  const [isRecording, setIsRecording] = useState(null);
 
   // ---------------------------------------------------------------------------
 // Utility helpers
@@ -100,21 +102,28 @@ function timeStringToSeconds (t) {
     clearInterval(timerRef.current)
     timerRef.current = null
   }
+  
 
   /* ---------------------------------------------------------------------
    * Socket wiring
    * -------------------------------------------------------------------*/
   useEffect(() => {
-    console.log(socket)
-  }, [socket]);
+    const socketio = io('http://localhost:5001');
+    setSocket(socketio);
+
+    return () => {
+      socketio.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
+    if (!socket) return;
     socket.on('connect', () => { sidRef.current = socket.id })
-    // socket.on('transcription_result', ({ letter }) => setLiveText(t => t + letter))
-    socket.on('transcription_result', ({ letter }) => console.log("got a letter:", letter))
+    socket.on('transcription_result', ({ letter }) => setLiveText(t => t + letter))
+    // socket.on('transcription_result', ({ letter }) => console.log("got a letter:", letter))
     socket.on('silence', () => handleCut())
     return () => socket.disconnect()
-  }, [])
+  }, [socket])
 
   /* ---------------------------------------------------------------------
    * Build DSP chain & processed MediaStream
@@ -303,8 +312,9 @@ function timeStringToSeconds (t) {
          </div>
          <div className="text-xl font-bold pr-10">
           {!isRecording ? (
-            <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : null}
-            <p id="live-transcript"></p>
+            <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : (
+              <p>{liveText}</p>
+            )}
          </div>
         </div>
         <RecordingPanel />
