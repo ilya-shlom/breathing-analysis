@@ -1,8 +1,9 @@
-"use client";
 
 import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
+import Table from "./Table";
+
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -16,6 +17,8 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
   const [sound, setSound] = useState(true);
 
   const [fileName, setFileName] = useState("");
+
+  const [resultsSection, setResultsSection] = useState(0);
 
   // ────────────────────────── helpers ──────────────────────────
 
@@ -60,10 +63,66 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
     <form ref={formRef} onSubmit={handleSubmit}>
     <div className="fixed bottom-0 left-0 h-120 z-10 w-full rounded-t-4xl bg-[var(--bg-blue)] shadow-2xl">
       <div className="  flex flex-col justify-center items-center">
-        
 
         {!isRecording ?
+        finished ? 
+        (<>
+        <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
+          <button className={`rounded-full px-4 py-2 text-white cursor-pointer transition
+            ${resultsSection === 0 ? "bg-[#70919E] shadow-lg" : "hover:bg-[#70919E]/50"}`} 
+            onClick={() => setResultsSection(0)}>
+            Таблица
+          </button>
+          <button className={`rounded-full px-4 py-2 text-white cursor-pointer transition
+            ${resultsSection === 1 ? "bg-[#70919E] shadow-lg" : "hover:bg-[#70919E]/50"}`} 
+            onClick={() => setResultsSection(1)}>
+            Спектрограмма
+          </button>
+          <button className={`rounded-full px-4 py-2 text-white cursor-pointer transition
+            ${resultsSection === 2 ? "bg-[#70919E] shadow-lg" : "hover:bg-[#70919E]/50"}`} 
+            onClick={() => setResultsSection(2)}>
+            Текст и волна
+          </button>
+        </div>
         
+        <div className="bg-[var(--bg-blue)] fixed bottom-0 h-105 w-full rounded-t-4xl flex flex-row justify-center py-2">
+          <div className="flex justify-between mt-5 px-20 gap-15 w-full">
+          {resultsSection === 0 &&
+          <Table 
+          rows={rows} 
+          autoActivityByAudio={autoActivityByAudio} 
+          autoActivityByText={autoActivityByText} 
+          autoBreathByAudio={autoBreathByAudio} 
+          autoBreathByText={autoBreathByText} 
+          />}
+          {resultsSection === 1 && <p>Спектрограмма</p>}
+          {resultsSection === 2 && <p>Текст и волна</p>}
+        <div className="text-right justify-self-end">
+          <h4 className="font-md">Параметры записи:</h4>
+          <p>Название файла: {fileName}</p>
+          <p>Режим: потоковая запись</p>
+          <p>Автоопределение вдоха/выдоха: {autoBreath ? "да" : "нет"}</p>
+          {autoBreath && (
+            <>
+              <p>По тексту: {autoBreathByText ? "да" : "нет"}</p>
+              <p>По аудио: {autoBreathByAudio ? "да" : "нет"}</p>
+            </>
+          )}
+          <p>Автоопределение активности: {autoActivity ? "да" : "нет"}</p>
+          {autoActivity && (
+            <>
+              <p>По тексту: {autoActivityByText ? "да" : "нет"}</p>
+              <p>По аудио: {autoActivityByAudio ? "да" : "нет"}</p>
+            </>
+          )}
+          <p>Авторазметка: {autoBreathMarkup ? "да" : "нет"}</p>
+        </div>
+      </div>
+        </div>
+        </>)
+
+        :
+
         (<>
         <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
           <button className="rounded-full bg-[#70919E] px-4 py-2 text-white shadow-lg cursor-pointer transition">
@@ -175,40 +234,14 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
         <h2 className="mb-3 mt-2 text-center text-2xl font-md text-white">
           Распознанные данные
         </h2>
-        <div className="flex justify-between mt-5 gap-15">
-          <div className="h-100 overflow-y-scroll
-          [&::-webkit-scrollbar]:w-1
-          [&::-webkit-scrollbar-track]:bg-white
-          [&::-webkit-scrollbar-thumb]:bg-black">
-          <table className="w-full h-full px-10 text-lg border-3">
-          <thead className="sticky">
-            <tr>
-              <th className="border px-2">Transcript</th>
-              <th className="border px-2">Time</th>
-              <th className="border px-2">Actual IE</th>
-              {autoBreathByText ? <th className="border px-2">Text IE</th> : ""}
-              {autoBreathByAudio ? <th className="border px-2">Audio IE</th> : ""}
-              <th className="border px-2">Filename</th>
-              {autoActivityByText ? <th className="border px-2">Text Activity</th> : ""}
-              {autoActivityByAudio ? <th className="border px-2">Audio Activity</th> : ""}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i}>
-                <td className="border px-1">{r.transcript}</td>
-                <td className="border px-1">{r.recording_time}</td>
-                <td className="border px-1">{r.inhale_exhale}</td>
-                {autoBreathByText ? <td className="border px-1">{r.ie_predicted_text}</td> : ""}
-                {autoBreathByAudio ? <td className="border px-1">{r.ie_predicted_audio}</td> : ""}
-                <td className="border px-1">{r.activity}</td>
-                {autoActivityByText ? <td className="border px-1">{r.activity_predicted_text}</td> : ""}
-                {autoActivityByAudio ? <td className="border px-1">{r.activity_predicted_audio}</td> : ""}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+        <div className="flex justify-between mt-5 px-20 gap-15 w-full">
+          <Table 
+          rows={rows} 
+          autoActivityByAudio={autoActivityByAudio} 
+          autoActivityByText={autoActivityByText} 
+          autoBreathByAudio={autoBreathByAudio} 
+          autoBreathByText={autoBreathByText} 
+          />
         <div className="text-right">
           <h4 className="font-md">Параметры записи:</h4>
           <p>Название файла: {fileName}</p>

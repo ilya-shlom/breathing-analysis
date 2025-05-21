@@ -369,7 +369,7 @@ function timeStringToSeconds (t) {
             )}
          </div>
         </div>
-        <RecordingPanel ref={panelRef} isRecording={isRecording} rows={rows} />
+        <RecordingPanel ref={panelRef} isRecording={isRecording} finished={finished} rows={rows} />
       </main>
       
     </div>
