@@ -51,6 +51,7 @@ export default function Home() {
   const [socket, setSocket] = useState(0);
 
   const [isRecording, setIsRecording] = useState(null);
+  const [finished, setFinished] = useState(false);
 
   // ---------------------------------------------------------------------------
 // Utility helpers
@@ -287,6 +288,7 @@ function timeStringToSeconds (t) {
   };
 
   const handleStopRecording = () => {
+    setFinished(true)
     setIsRecording(false);
     stopRecording();
     stopwatchRef.current?.pause();
@@ -320,7 +322,7 @@ function timeStringToSeconds (t) {
           </div>
          </div>
          <div className="text-xl font-bold pr-10">
-          {!isRecording ? (
+          {!isRecording && !finished ? (
             <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : (
               <p>{liveText}</p>
             )}
