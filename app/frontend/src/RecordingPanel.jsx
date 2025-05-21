@@ -1,5 +1,8 @@
 
 import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import WaveSurfer from 'wavesurfer.js';
+import Spectrogram from 'wavesurfer.js/dist/plugins/spectrogram.js';
+
 
 import Table from "./Table";
 

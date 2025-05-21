@@ -1,10 +1,11 @@
-import { Mic, ContentCut, Stop, PlayArrow, Replay, Refresh } from "@mui/icons-material";
+import { Mic, ContentCut, Stop, PlayArrow, Pause, Refresh } from "@mui/icons-material";
 import Stopwatch from "./Stopwatch";
 import RecordingPanel from "./RecordingPanel";
 import React, { useRef, useState, useEffect } from "react";
 import io from 'socket.io-client'
 import WaveSurfer from 'wavesurfer.js'
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js'
+import WaveOptions from "./WaveOptions";
 
 
 
@@ -85,6 +86,9 @@ function timeStringToSeconds (t) {
   const timerRef                      = useRef(null)
 
   const MONITOR_AUDIO = false
+
+  const [playbackUrl, setPlaybackUrl] = useState(null);
+  const [isPlaying, setIsPlaying]     = useState(false);
 
   /* ---------------------------------------------------------------------
    * Stopwatch helpers
@@ -248,7 +252,7 @@ function timeStringToSeconds (t) {
       if (res.ok) {
         const blob = await res.blob()
         const url  = URL.createObjectURL(blob)
-        await playBack(url)
+        setPlaybackUrl(url)
       }
     } catch (e) { console.error(e) }
 
@@ -257,6 +261,12 @@ function timeStringToSeconds (t) {
     if (audioCtxRef.current) { await audioCtxRef.current.close(); audioCtxRef.current = null; workletReadyRef.current = false }
   }
 
+  useEffect(() => {
+  if (finished && playbackUrl) {
+    playBack(playbackUrl);
+  }
+}, [finished, playbackUrl]);
+
   /* ---------------------------------------------------------------------
    * Playback with WaveSurfer
    * -------------------------------------------------------------------*/
@@ -264,7 +274,7 @@ function timeStringToSeconds (t) {
     wavesurferRef.current?.destroy()
 
     const regions = RegionsPlugin.create()
-    const ws = WaveSurfer.create({ container: '#waveform', url, plugins: [regions] })
+    const ws = WaveSurfer.create({ ...WaveOptions, url, plugins: [regions] })
     wavesurferRef.current = ws
 
     ws.on('interaction', () => ws.play())
@@ -274,14 +284,19 @@ function timeStringToSeconds (t) {
         regions.addRegion({
           start: timeStringToSeconds(cuts[i]),
           end:   timeStringToSeconds(cuts[i + 1]),
-          content: i % 2 === 0 ? 'Inhale' : 'Exhale',
-          color:  i % 2 === 0 ? 'rgba(174,255,147,0.5)' : 'rgba(147,188,255,0.5)',
+          content: i % 2 === 0 ? 'Вдох' : 'Выдох',
+          color:  i % 2 === 0 ? 'rgba(204,241,255,0.5)' : 'rgba(255,204,204,0.5)',
           drag: false,
           resize: false,
         })
       }
     })
   }
+
+
+  /* ---------------------------------------------------------------------
+   * Player buttons handlers
+   * -------------------------------------------------------------------*/
 
   const handleStartRecording = () => {
     setIsRecording(true);
@@ -305,6 +320,11 @@ function timeStringToSeconds (t) {
     setLiveText('');
   }
 
+  const handlePlay = () => {
+    !isPlaying ? wavesurferRef.current?.play() : wavesurferRef.current?.pause();
+    setIsPlaying((p) => !p);
+  }
+
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -326,7 +346,7 @@ function timeStringToSeconds (t) {
           finished ? 
           (
             <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
-              <PlayArrow onClick={handleCut} />
+              {!isPlaying ? <PlayArrow onClick={handlePlay} /> : <Pause onClick={handlePlay} />}
                 <div style={{
                   width: '1px',
                   height: '30px',
@@ -357,6 +377,7 @@ function timeStringToSeconds (t) {
          <div className="text-xl font-bold pr-10">
           {!isRecording && !finished ? (
             <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : (
+              <div className="flex flex-col gap-2">
               <div
                 ref={scrollRef}
                 className="bg-[#EBEBEB] h-10 py-1 w-200 overflow-x-scroll overflow-y-hidden whitespace-nowrap text-right 
@@ -365,6 +386,8 @@ function timeStringToSeconds (t) {
                   [&::-webkit-scrollbar-thumb]:bg-gray-400/80"
               >
                 <p>{liveText}</p>
+              </div>
+              <div id="waveform" className="w-200 font-regular text-sm"></div>
               </div>
             )}
          </div>
