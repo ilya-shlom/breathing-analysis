@@ -305,7 +305,7 @@ function timeStringToSeconds (t) {
             </div>
           ) : (
             <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
-              <ContentCut id="mic-cut" />
+              <ContentCut id="mic-cut" onClick={handleCut} />
                 <div style={{
                   width: '1px',
                   height: '30px',

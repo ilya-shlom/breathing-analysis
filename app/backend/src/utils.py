@@ -19,3 +19,6 @@ def fetch_file_data(request, input_fields: list) -> list:
     for input_field in input_fields:
         file_data.append(request.form.get(input_field))
     return file_data
+
+def str_to_bool(val):
+    return str(val).lower() in ("true", "1", "yes", "on")

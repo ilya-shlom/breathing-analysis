@@ -70,11 +70,18 @@ def handle_connect():
 
 from collections import defaultdict
 client_data = defaultdict(lambda: {"chunks": 0, 
-                                   "transcript": "",
-                                   "transcript_silence": "", 
-                                   "last_transcript_length": 0,
-                                   "autosplit": False,
-                                   "data_collect_filename": ""})
+                                    "transcript": "",
+                                    "transcript_silence": "", 
+                                    "last_transcript_length": 0,
+                                    "autosplit": False,
+                                    "fileName": False,
+                                    "autoBreath": False,
+                                    "autoBreathByText": False,
+                                    "autoBreathByAudio": False,
+                                    "autoActivity": False,
+                                    "autoActivityByText": False,
+                                    "autoActivityByAudio": False,
+                                    "data_collect_filename": ""})
 
 
 ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
@@ -161,12 +168,16 @@ def get_start_params():
                                             "autoActivity",
                                             "autoActivityByText",
                                             "autoActivityByAudio",
-                                            "autoBreathMarkup",])
-        print("-------- START DATA --------")
-        print(filename, autoBreath, autoBreathByText, autoBreathByAudio, autoActivity, autoActivityByText, autoActivityByAudio, autosplit)
-        # TODO: fetch and apply prefix, record_type, mode, current_step, time, update in this endpoint
-        
-        client_data[sid]["autosplit"] = autosplit
+                                            "autoBreathMarkup",]) 
+        client_data[sid]["fileName"] = filename
+        client_data[sid]["autoBreath"] = str_to_bool(autoBreath)
+        client_data[sid]["autoBreathByText"] = str_to_bool(autoBreathByText)
+        client_data[sid]["autoBreathByAudio"] = str_to_bool(autoBreathByAudio)
+        client_data[sid]["autoActivity"] = str_to_bool(autoActivity)
+        client_data[sid]["autoActivityByText"] = str_to_bool(autoActivityByText)
+        client_data[sid]["autoActivityByAudio"] = str_to_bool(autoActivityByAudio)
+        client_data[sid]["autosplit"] = str_to_bool(autosplit)
+        print("WAT??", autosplit, client_data[sid]["autosplit"])
         if APP_MODE == DATA_COLLECT_MODE:
             # Find the next filename based on existing files in the upload folder
             existing_files = [f for f in os.listdir(f"{UPLOAD_FOLDER}/active") if f.endswith(".wav")]
@@ -192,13 +203,12 @@ def save_file():
     if not sid:
         return jsonify({"error": "Session not initialized"}), 400
     if request.method == "POST":
-        prefix, record_type, mode, current_step, time, update = fetch_file_data(request, ["prefix",
-                                                                                "record_type",
-                                                                                "mode", 
-                                                                                "current_step", 
-                                                                                "last_time", 
-                                                                                "update"])
-        
+        current_step, time = fetch_file_data(request, [
+                                                        "current_step", 
+                                                        "last_time", 
+                                                        ])
+        update = False # TODO: add button to site & fetch in /start
+        prefix = client_data[sid]["fileName"]
         current_step_predicted = '-'
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
@@ -214,7 +224,7 @@ def save_file():
                 os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/audio')
                 os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/graphs')
 
-            if record_type != "automatic_ie":
+            if not client_data[sid]["autoBreath"]:
                 output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
             else:
                 output_filename = 'temp_proccessed.wav'
@@ -236,7 +246,7 @@ def save_file():
                 client_data[sid]["last_transcript_length"] = len(full_transcript)
 
             # Inhale/Exhale detection
-            if record_type == "automatic_ie":
+            if client_data[sid]["autoBreath"]:
                 prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
                 print(f"Predicted class: {prediction}")
                 current_step_predicted = 'exhale' if prediction == 1 else 'inhale'
