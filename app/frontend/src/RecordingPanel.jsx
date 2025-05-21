@@ -1,12 +1,12 @@
 
-import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import WaveSurfer from 'wavesurfer.js';
 import Spectrogram from 'wavesurfer.js/dist/plugins/spectrogram.js';
 
 
 import Table from "./Table";
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows }, ref) => {
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, playbackUrl }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -26,6 +26,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows }, re
   // ────────────────────────── helpers ──────────────────────────
 
   const formRef = useRef(null);
+
 
   const handleSubmit = (e) => {
     if (e?.preventDefault) e.preventDefault();
@@ -60,6 +61,9 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows }, re
   const resetIfDisabled = (parentChecked, setters) => {
     if (!parentChecked) setters.forEach((fn) => fn());
   };
+
+ 
+  
 
   // ────────────────────────── render ──────────────────────────
   return (
@@ -98,7 +102,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows }, re
           autoBreathByAudio={autoBreathByAudio} 
           autoBreathByText={autoBreathByText} 
           />}
-          {resultsSection === 1 && <p>Спектрограмма</p>}
+          {resultsSection === 1 && <SpectrogramComponent playbackUrl={playbackUrl} />}
           {resultsSection === 2 && <p>Текст и волна</p>}
         <div className="text-right justify-self-end">
           <h4 className="font-md">Параметры записи:</h4>
@@ -312,6 +316,65 @@ function Checkbox({ label, className = "", ...props }) {
         ?
       </span>
     </label>
+  );
+}
+
+function SpectrogramComponent({ playbackUrl }) {
+  const containerRef = useRef(null);
+  const spectroRef = useRef(null);
+  const waveSurferRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !spectroRef.current || !playbackUrl) return;
+
+    // Create hidden dummy container for waveform
+    const dummy = document.createElement('div');
+    dummy.style.height = '0';
+    dummy.style.overflow = 'hidden';
+    containerRef.current.appendChild(dummy);
+
+    const ws = WaveSurfer.create({
+      container: dummy,
+      url: playbackUrl,
+      height: 0,
+      interact: false,
+      normalize: true,
+      barWidth: 0,
+      cursorWidth: 0,
+    });
+
+    ws.registerPlugin(
+      Spectrogram.create({
+        container: spectroRef.current,
+        labels: true,
+        height: 300,
+        splitChannels: false,
+        scale: 'mel',
+        frequencyMax: 8000,
+        frequencyMin: 0,
+        fftSamples: 1024,
+        labelsBackground: 'rgba(0, 0, 0, 0.1)',
+      })
+    );
+
+    waveSurferRef.current = ws;
+
+    return () => {
+      if (waveSurferRef.current) {
+        waveSurferRef.current.destroy();
+        waveSurferRef.current = null;
+      }
+      // Safely remove dummy node if it still exists
+      if (containerRef.current && dummy.parentNode === containerRef.current) {
+        containerRef.current.removeChild(dummy);
+      }
+    };
+  }, [playbackUrl]);
+
+  return (
+    <div ref={containerRef} style={{ width: '100%' }}>
+      <div ref={spectroRef} style={{ width: '100%', height: 200 }} />
+    </div>
   );
 }
 
