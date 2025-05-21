@@ -1,4 +1,4 @@
-import { Mic, ContentCut, Stop } from "@mui/icons-material";
+import { Mic, ContentCut, Stop, PlayArrow, Replay, Refresh } from "@mui/icons-material";
 import Stopwatch from "./Stopwatch";
 import RecordingPanel from "./RecordingPanel";
 import React, { useRef, useState, useEffect } from "react";
@@ -288,20 +288,50 @@ function timeStringToSeconds (t) {
   };
 
   const handleStopRecording = () => {
-    setFinished(true)
+    setFinished(true);
     setIsRecording(false);
     stopRecording();
     stopwatchRef.current?.pause();
   };
+
+  const handleRestart = () => {
+    setFinished(false);
+    setIsRecording(false);
+    stopwatchRef.current?.reset();
+    setRows([]);
+    setLiveText('');
+  }
+
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+    }
+  }, [liveText]);
 
   return (
     <div className="height-screen grid grid-rows-[auto_1fr_auto]">
       {/* Load Socket.io client from your server: */}
 
       <main className="flex flex-row gap-[32px] row-start-2 items-center sm:items-start">
-        <div className="h-[100px] w-full p-20 flex flex-row justify-between items-center">
-         <div className="flex flex-row items-center justify-between p-1 gap-[16px] rounded-full bg-[#E9E9E9] h-12 w-70">
-          {!isRecording ? (
+        <div className="h-[100px] w-full p-20 flex flex-row justify-start gap-20 items-center">
+         <div className={`flex flex-row items-center justify-between p-1 gap-[16px] rounded-full h-12 w-70
+          ${isRecording ? 'bg-[#FFD8D8]' : 'bg-[#E9E9E9]'}`}>
+          {!isRecording ? 
+          finished ? 
+          (
+            <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
+              <PlayArrow onClick={handleCut} />
+                <div style={{
+                  width: '1px',
+                  height: '30px',
+                  background: 'black'
+                }} />
+              <Refresh onClick={handleRestart} />
+            </div>
+          ) : (
             <div className="h-10 w-10 rounded-full bg-white/60 hover:cursor-pointer flex items-center justify-center">
               <Mic onClick={handleStartRecording} id="mic-button" />
             </div>
@@ -324,7 +354,15 @@ function timeStringToSeconds (t) {
          <div className="text-xl font-bold pr-10">
           {!isRecording && !finished ? (
             <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : (
-              <p>{liveText}</p>
+              <div
+                ref={scrollRef}
+                className="bg-[#EBEBEB] h-10 py-1 w-200 overflow-x-scroll overflow-y-hidden whitespace-nowrap text-right 
+                  [&::-webkit-scrollbar]:h-1
+                  [&::-webkit-scrollbar-track]:bg-black/0
+                  [&::-webkit-scrollbar-thumb]:bg-gray-400/80"
+              >
+                <p>{liveText}</p>
+              </div>
             )}
          </div>
         </div>
