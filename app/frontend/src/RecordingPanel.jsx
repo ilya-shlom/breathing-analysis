@@ -2,7 +2,7 @@
 
 import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording }, ref) => {
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -168,9 +168,30 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording }, ref) => {
         </div>
         </>)
         : (
-            <h2 className="mb-6 text-center text-2xl font-semibold text-white">
-              Запись...
-            </h2>
+        <>
+        <table className="w-auto px-10 mt-10 text-lg border-2">
+        <thead className="">
+          <tr>
+            <th className="border px-1">Transcript</th>
+            <th className="border px-1">Time</th>
+            <th className="border px-1">Actual</th>
+            <th className="border px-1">Predicted</th>
+            <th className="border px-1">Activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i}>
+              <td className="border px-1">{r.transcript}</td>
+              <td className="border px-1">{r.recording_time}</td>
+              <td className="border px-1">{r.inhale_exhale}</td>
+              <td className="border px-1">{r.inhale_exhale_predicted}</td>
+              <td className="border px-1">{r.activity}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </>
         )}
       </div>
     </div>
