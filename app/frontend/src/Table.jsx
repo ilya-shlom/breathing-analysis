@@ -1,10 +1,10 @@
 const Table = ({autoActivityByAudio, autoActivityByText, autoBreathByAudio, autoBreathByText, rows}) => {
     return (
-    <div className="h-100 overflow-y-scroll
+    <div className="max-h-100 min-h-5 overflow-y-auto
           [&::-webkit-scrollbar]:w-1
-          [&::-webkit-scrollbar-track]:bg-white
-          [&::-webkit-scrollbar-thumb]:bg-black">
-          <table className="w-full h-full px-10 text-lg border-3">
+          [&::-webkit-scrollbar-track]:bg-gray-500
+          [&::-webkit-scrollbar-thumb]:bg-white/70 [&::-webkit-scrollbar-thumb]:rounded">
+          <table className="w-full h-full min-h-5 px-10 text-lg border-3">
           <thead className="">
             <tr>
               <th className="border px-2">Transcript</th>
