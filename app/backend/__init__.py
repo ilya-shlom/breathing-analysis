@@ -210,8 +210,10 @@ def save_file():
                                                         ])
         update = False # TODO: add button to site & fetch in /start
         prefix = client_data[sid]["fileName"]
-        ie_predicted_text = '-'
-        ie_predicted_audio = '-'
+        ie_predicted_text = None
+        ie_predicted_audio = None
+        activity_predicted_text = None
+        activity_predicted_audio = None
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
         # print(prefix)
@@ -249,13 +251,14 @@ def save_file():
 
             # Inhale/Exhale detection
             if client_data[sid]["autoBreath"]:
+                # Text-based prediction
                 if client_data[sid]["autoBreathByText"]:
                     prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
                     print(f"Predicted class: {prediction}")
                     ie_predicted_text = 'exhale' if prediction == 1 else 'inhale'
                     final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{ie_predicted_text}_{recording_time}.wav'
                     shutil.copyfile(output_filename, final_output_filename)
-
+                # Audio-based prediction
                 if client_data[sid]["autoBreathByAudio"]:
                     ie_predicted_audio = get_breath_params.predict(get_breath_params.IE, output_filename)
             
@@ -267,13 +270,18 @@ def save_file():
                             joblib.dump(ie_fingerprint_model, f)  
 
             # Activity detection
-            if prefix.find('_auto') != -1:
-                detected_activity_cluster = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
-                prefix = 'Active' if detected_activity_cluster == 2 else 'Resting' if detected_activity_cluster == 1 else 'Other'
+            if client_data[sid]["autoActivity"]:
+                # Text-based prediction
+                if client_data[sid]["autoActivityByText"]:
+                    detected_activity_cluster = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                    activity_predicted_text = 'active' if detected_activity_cluster == 2 else 'resting' # if detected_activity_cluster == 1 else 'Other'
+                # Audio-based prediction
+                if client_data[sid]["autoActivityByAudio"]:
+                    activity_predicted_audio = get_breath_params.predict(get_breath_params.AR, output_filename)
             # transcript_prefix = f'{prefix} {current_step} {starting_point}: '
 
             # create graph
-            graph_path = f'{UPLOAD_FOLDER}/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
+            # graph_path = f'{UPLOAD_FOLDER}/{prefix}/graphs/{prefix}_{current_step}_{recording_time}.png'
             # create_waveform.create_waveform(output_filename, transcript, graph_path)
 
         elif APP_MODE == DATA_COLLECT_MODE:
@@ -296,7 +304,9 @@ def save_file():
             'inhale_exhale' : current_step,
             'ie_predicted_text' : ie_predicted_text,
             'ie_predicted_audio' : ie_predicted_audio,
-            'activity' : prefix
+            'activity' : prefix,
+            'activity_predicted_text' : activity_predicted_text,
+            'activity_predicted_audio' : activity_predicted_audio
             }
     
 
