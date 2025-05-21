@@ -178,8 +178,11 @@ function timeStringToSeconds (t) {
     try {
       const r = await fetch('http://127.0.0.1:5001/cut', { method: 'POST', body: fd,   credentials: 'include', })
       if (!r.ok) return console.error('POST /cut failed')
-      const { transcript, inhale_exhale, inhale_exhale_predicted, recording_time, activity } = await r.json()
-      setRows(rows => [...rows, { transcript, recording_time, inhale_exhale, inhale_exhale_predicted, activity }])
+      const { transcript, inhale_exhale, recording_time, activity, 
+    activity_predicted_text, activity_predicted_audio, ie_predicted_text, ie_predicted_audio } = await r.json()
+      setRows(rows => [...rows, { transcript, recording_time, inhale_exhale, activity,
+        activity_predicted_text, activity_predicted_audio, ie_predicted_text, ie_predicted_audio
+       }])
     } catch (e) { console.error(e) }
   }
 
