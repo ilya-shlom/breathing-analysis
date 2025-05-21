@@ -277,7 +277,11 @@ function timeStringToSeconds (t) {
     const ws = WaveSurfer.create({ ...WaveOptions, url, plugins: [regions] })
     wavesurferRef.current = ws
 
-    ws.on('interaction', () => ws.play())
+    ws.on('interaction', () => {
+      ws.play();
+      setIsPlaying(true);
+    })
+
     ws.on('decode', () => {
       const cuts = cutsRef.current
       for (let i = 0; i < cuts.length - 1; i++) {
@@ -291,6 +295,10 @@ function timeStringToSeconds (t) {
         })
       }
     })
+
+    ws.on('finish', () => {
+      setIsPlaying(false); 
+    });
   }
 
 
