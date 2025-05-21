@@ -62,7 +62,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
       <div className="  flex flex-col justify-center items-center">
         
 
-        {!isRecording ?
+        {isRecording ?
         
         (<>
         <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
@@ -176,8 +176,12 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
           Распознанные данные
         </h2>
         <div className="flex justify-between mt-5 gap-15">
-          <table className="w-auto px-10 text-lg border-3">
-          <thead className="">
+          <div className="h-100 overflow-y-scroll
+          [&::-webkit-scrollbar]:w-1
+          [&::-webkit-scrollbar-track]:bg-white
+          [&::-webkit-scrollbar-thumb]:bg-black">
+          <table className="w-full h-full px-10 text-lg border-3">
+          <thead className="sticky">
             <tr>
               <th className="border px-2">Transcript</th>
               <th className="border px-2">Time</th>
@@ -198,8 +202,26 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
             ))}
           </tbody>
         </table>
-        <div>
-          Параметры аудиозаписи
+        </div>
+        <div className="text-right">
+          <h4 className="font-md">Параметры записи:</h4>
+          <p>Название файла: {fileName}</p>
+          <p>Режим: потоковая запись</p>
+          <p>Автоопределение вдоха/выдоха: {autoBreath ? "да" : "нет"}</p>
+          {autoBreath && (
+            <>
+              <p>По тексту: {autoBreathByText ? "да" : "нет"}</p>
+              <p>По аудио: {autoBreathByAudio ? "да" : "нет"}</p>
+            </>
+          )}
+          <p>Автоопределение активности: {autoActivity ? "да" : "нет"}</p>
+          {autoBreath && (
+            <>
+              <p>По тексту: {autoActivityByText ? "да" : "нет"}</p>
+              <p>По аудио: {autoActivityByAudio ? "да" : "нет"}</p>
+            </>
+          )}
+          <p>Авторазметка: {autoBreathMarkup ? "да" : "нет"}</p>
         </div>
       </div>
       </>
