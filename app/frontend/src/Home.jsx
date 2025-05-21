@@ -328,7 +328,7 @@ function timeStringToSeconds (t) {
             )}
          </div>
         </div>
-        <RecordingPanel ref={panelRef} />
+        <RecordingPanel ref={panelRef} isRecording={isRecording} />
       </main>
       
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, forwardRef, useImperativeHandle } from "react";
 
-const RecordingPanel = forwardRef(({ onSubmit }, ref) => {
+const RecordingPanel = forwardRef(({ onSubmit, isRecording }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -60,7 +60,11 @@ const RecordingPanel = forwardRef(({ onSubmit }, ref) => {
     <form ref={formRef} onSubmit={handleSubmit}>
     <div className="fixed bottom-0 left-0 h-120 z-10 w-full rounded-t-4xl bg-[var(--bg-blue)] shadow-2xl">
       <div className="  flex flex-col justify-center items-center">
-        {/* Tabs */}
+        
+
+        {!isRecording ?
+        
+        (<>
         <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
           <button className="rounded-full bg-[#70919E] px-4 py-2 text-white shadow-lg cursor-pointer transition">
             Потоковая запись
@@ -69,8 +73,6 @@ const RecordingPanel = forwardRef(({ onSubmit }, ref) => {
             Загрузка файла
           </button>
         </div>
-
-        {/* Heading */}
         <div className="bg-[var(--bg-blue)] fixed bottom-0 h-105 w-full rounded-t-4xl flex flex-col py-2">
           <h2 className="mb-6 text-center text-2xl font-semibold text-white">
             Параметры записи
@@ -164,6 +166,12 @@ const RecordingPanel = forwardRef(({ onSubmit }, ref) => {
             </div>
           </div>
         </div>
+        </>)
+        : (
+            <h2 className="mb-6 text-center text-2xl font-semibold text-white">
+              Запись...
+            </h2>
+        )}
       </div>
     </div>
     </form>
