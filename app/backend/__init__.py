@@ -22,6 +22,8 @@ from pydub import AudioSegment
 from PyBreathTranscript import transcript as bt
 from PyBreathTranscript.transcript_dtw import get_recognizer
 
+import PyBreathParams.get_breath_params as get_breath_params
+
 from tools import optimize_audio, create_waveform
 
 from src.utils import *
@@ -84,7 +86,6 @@ client_data = defaultdict(lambda: {"chunks": 0,
                                     "data_collect_filename": ""})
 
 
-ie_model = joblib.load(f"{MODELS_FOLDER}/model_svm.pkl")
 ie_fingerprint_model = joblib.load(IE_MODEL_FILE)
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript.pkl")
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript_breath.pkl")
@@ -209,7 +210,8 @@ def save_file():
                                                         ])
         update = False # TODO: add button to site & fetch in /start
         prefix = client_data[sid]["fileName"]
-        current_step_predicted = '-'
+        ie_predicted_text = '-'
+        ie_predicted_audio = '-'
         # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
         # print(prefix)
@@ -247,18 +249,22 @@ def save_file():
 
             # Inhale/Exhale detection
             if client_data[sid]["autoBreath"]:
-                prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
-                print(f"Predicted class: {prediction}")
-                current_step_predicted = 'exhale' if prediction == 1 else 'inhale'
-                final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step_predicted}_{recording_time}.wav'
-                shutil.copyfile(output_filename, final_output_filename)
+                if client_data[sid]["autoBreathByText"]:
+                    prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                    print(f"Predicted class: {prediction}")
+                    ie_predicted_text = 'exhale' if prediction == 1 else 'inhale'
+                    final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{ie_predicted_text}_{recording_time}.wav'
+                    shutil.copyfile(output_filename, final_output_filename)
+
+                if client_data[sid]["autoBreathByAudio"]:
+                    ie_predicted_audio = get_breath_params.predict(get_breath_params.IE, output_filename)
             
-            # Update model
-            if update:
-                if current_step == current_step_predicted:
-                    ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
-                    with open(IE_MODEL_FILE, 'wb') as f:
-                        joblib.dump(ie_fingerprint_model, f)  
+                # Update model
+                if update:
+                    if current_step == ie_predicted_text:
+                        ie_fingerprint_model.partial_fit(hash_vectorizer.fit_transform([transcript]))
+                        with open(IE_MODEL_FILE, 'wb') as f:
+                            joblib.dump(ie_fingerprint_model, f)  
 
             # Activity detection
             if prefix.find('_auto') != -1:
@@ -288,7 +294,8 @@ def save_file():
             'transcript' : transcript, 
             'recording_time' : time,
             'inhale_exhale' : current_step,
-            'inhale_exhale_predicted' : current_step_predicted,
+            'ie_predicted_text' : ie_predicted_text,
+            'ie_predicted_audio' : ie_predicted_audio,
             'activity' : prefix
             }
     
