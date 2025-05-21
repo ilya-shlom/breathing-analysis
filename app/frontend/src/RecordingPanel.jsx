@@ -62,7 +62,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
       <div className="  flex flex-col justify-center items-center">
         
 
-        {isRecording ?
+        {!isRecording ?
         
         (<>
         <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
@@ -215,7 +215,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, rows }, ref) => {
             </>
           )}
           <p>Автоопределение активности: {autoActivity ? "да" : "нет"}</p>
-          {autoBreath && (
+          {autoActivity && (
             <>
               <p>По тексту: {autoActivityByText ? "да" : "нет"}</p>
               <p>По аудио: {autoActivityByAudio ? "да" : "нет"}</p>
