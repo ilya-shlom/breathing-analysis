@@ -261,11 +261,11 @@ function timeStringToSeconds (t) {
     if (audioCtxRef.current) { await audioCtxRef.current.close(); audioCtxRef.current = null; workletReadyRef.current = false }
   }
 
-  useEffect(() => {
+useEffect(() => {
   if (finished && playbackUrl) {
     playBack(playbackUrl);
   }
-}, [finished, playbackUrl]);
+}, [finished, playbackUrl, rows]);
 
   /* ---------------------------------------------------------------------
    * Playback with WaveSurfer
@@ -283,18 +283,31 @@ function timeStringToSeconds (t) {
     })
 
     ws.on('decode', () => {
-      const cuts = cutsRef.current
+      const cuts = cutsRef.current;
+
+      /* ── clear old regions ───────────────────────────── */
+      if (typeof regions.clear === 'function') {
+        regions.clear();
+      } else {
+        Object.values(regions.regions || {}).forEach(r => r.remove());
+      }
+
+      /* ── redraw with current rows colouring ──────────── */
       for (let i = 0; i < cuts.length - 1; i++) {
+        const ie = rows[i]?.inhale_exhale;
         regions.addRegion({
           start: timeStringToSeconds(cuts[i]),
           end:   timeStringToSeconds(cuts[i + 1]),
-          content: i % 2 === 0 ? 'Вдох' : 'Выдох',
-          color:  i % 2 === 0 ? 'rgba(204,241,255,0.5)' : 'rgba(255,204,204,0.5)',
+          content: ie === 'inhale' ? 'Вдох' : 'Выдох',
+          color:
+            ie === 'inhale'
+              ? 'rgba(204,241,255,0.5)'
+              : 'rgba(255,204,204,0.5)',
           drag: false,
           resize: false,
-        })
+        });
       }
-    })
+    });
 
     ws.on('finish', () => {
       setIsPlaying(false); 
@@ -406,6 +419,7 @@ function timeStringToSeconds (t) {
         finished={finished} 
         playbackUrl={playbackUrl}
         rows={rows}
+        setRows={setRows}
         cuts={cutsRef.current} />
       </main>
       

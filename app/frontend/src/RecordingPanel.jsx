@@ -4,8 +4,9 @@ import WaveSurfer from 'wavesurfer.js';
 import Spectrogram from 'wavesurfer.js/dist/plugins/spectrogram.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js'
 
-
 import Table from "./Table";
+import useRowsOverlay from './useRowsOverlay';
+
 
 function timeStringToSeconds (t) {
   const [h, m, s, ms] = t.split(':').map(Number)
@@ -26,7 +27,7 @@ function rowsToCSV(rows) {
   return csvRows.join("\n");
 }
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, playbackUrl, cuts }, ref) => {
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setRows, playbackUrl, cuts }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -35,6 +36,9 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
   const [autoActivity, setAutoActivity] = useState(false);
   const [autoActivityByText, setAutoActivityByText] = useState(false);
   const [autoActivityByAudio, setAutoActivityByAudio] = useState(false);
+
+  const [rowsOverlay, RowsOverlay] = useRowsOverlay();
+
 
   const [autoBreathMarkup, setAutoBreathMarkup] = useState(false);
   const [sound, setSound] = useState(true);
@@ -224,7 +228,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
           )}
           <p>Авторазметка: {autoBreathMarkup ? "да" : "нет"}</p>
           <div className="flex flex-col gap-2 justify-self-end mt-2">
-            {(resultsSection === 0 || resultsSection === 2) && <><button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={() => {}}>Изменить вручную</button>
+            {(resultsSection === 0 || resultsSection === 2) && <><button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={() => rowsOverlay.open(rows, setRows)}>Изменить вручную</button>
             <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={() => {}}>Авторазметка</button></>}
             {resultsSection === 0 && <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={handleDownloadCSV}>Сохранить в CSV</button>}
           </div>
@@ -379,6 +383,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
         )}
       </div>
     </div>
+    <RowsOverlay />
     </form>
   );
 })
