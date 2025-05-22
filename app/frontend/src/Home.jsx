@@ -1,4 +1,4 @@
-import { Mic, ContentCut, Stop, PlayArrow, Pause, Refresh } from "@mui/icons-material";
+import { Mic, ContentCut, Stop, PlayArrow, Pause, Refresh, FolderOpen, Check } from "@mui/icons-material";
 import Stopwatch from "./Stopwatch";
 import RecordingPanel from "./RecordingPanel";
 import React, { useRef, useState, useEffect } from "react";
@@ -89,6 +89,35 @@ function timeStringToSeconds (t) {
 
   const [playbackUrl, setPlaybackUrl] = useState(null);
   const [isPlaying, setIsPlaying]     = useState(false);
+
+  const [streamMode, setStreamMode] = useState(true);
+  // State for file upload
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [fileSent, setFileSent] = useState(false);
+  // Handlers for file upload
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    setUploadedFile(file);
+    setFileSent(false);
+  };
+
+  const handleFileSend = async () => {
+    if (!uploadedFile) return;
+    const fd = new FormData();
+    fd.append('file', uploadedFile);
+    try {
+      const res = await fetch('http://127.0.0.1:5001/upload', {
+        method: 'POST',
+        body: fd,
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      console.log('File uploaded successfully');
+      setFileSent(true);
+    } catch (err) {
+      console.error('File upload error:', err);
+    }
+  };
 
   /* ---------------------------------------------------------------------
    * Stopwatch helpers
@@ -363,7 +392,7 @@ useEffect(() => {
         <div className="h-[100px] w-full p-20 flex flex-row justify-start gap-20 items-center">
          <div className={`flex flex-row items-center justify-between p-1 gap-[16px] rounded-full h-12 w-70
           ${isRecording ? 'bg-[#FFD8D8]' : 'bg-[#E9E9E9]'}`}>
-          {!isRecording ? 
+          {streamMode ? !isRecording ? 
           finished ? 
           (
             <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
@@ -389,15 +418,40 @@ useEffect(() => {
                 }} />
               <Stop onClick={handleStopRecording} id="mic-stop" />
             </div>
+          ) : (
+            <div className={`h-10 ${uploadedFile ? 'w-20 justify-between flex-row px-2' : 'w-10 justify-center'} rounded-full bg-white/60 hover:cursor-pointer flex items-center`}>
+              {/* File upload icon */}
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <FolderOpen />
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                accept="*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <div style={{
+                  width: '1px',
+                  height: '30px',
+                  background: 'black'
+                }} />
+              {uploadedFile && !fileSent && (
+                <Check
+                  onClick={handleFileSend}
+                  
+                /> 
+              )}
+            </div>
           )}
           
           <div className="mr-2">
-            <Stopwatch ref={stopwatchRef} />
+            {streamMode ? <Stopwatch ref={stopwatchRef} /> : uploadedFile ? <p>{uploadedFile.name}</p> : <p>Файл не выбран</p>}
           </div>
          </div>
          <div className="text-xl font-bold pr-10">
           {!isRecording && !finished ? (
-            <p>Начните запись, чтобы увидеть расшифровку дыхания</p>) : (
+            streamMode ? <p>Начните запись, чтобы увидеть расшифровку дыхания</p> : <p>Загрузите WAV-файл для получения параметров дыхания</p> ) : (
               <div className="flex flex-col gap-2">
               <div
                 ref={scrollRef}
@@ -420,6 +474,8 @@ useEffect(() => {
         playbackUrl={playbackUrl}
         rows={rows}
         setRows={setRows}
+        streamMode={streamMode}
+        setStreamMode={setStreamMode}
         cuts={cutsRef.current} />
       </main>
       

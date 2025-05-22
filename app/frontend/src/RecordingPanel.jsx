@@ -27,7 +27,7 @@ function rowsToCSV(rows) {
   return csvRows.join("\n");
 }
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setRows, playbackUrl, cuts }, ref) => {
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setRows, streamMode, setStreamMode, playbackUrl, cuts }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -241,16 +241,20 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
 
         (<>
         <div className="flex my-3 gap-1 bg-[#80A8B6]/70 rounded-full text-md font-regular">
-          <button className="rounded-full bg-[#70919E] px-4 py-2 text-white shadow-lg cursor-pointer transition">
+          <button className={`rounded-full px-4 py-2 text-white cursor-pointer transition
+            ${streamMode === true ? "bg-[#70919E] shadow-lg" : "hover:bg-[#70919E]/50"}`} 
+            onClick={() => setStreamMode(true)}>
             Потоковая запись
           </button>
-          <button className="rounded-full px-4 py-2 text-white/80 hover:bg-[#70919E]/50 cursor-pointer transition">
+          <button className={`rounded-full px-4 py-2 text-white cursor-pointer transition
+            ${streamMode === false ? "bg-[#70919E] shadow-lg" : "hover:bg-[#70919E]/50"}`} 
+            onClick={() => setStreamMode(false)}>
             Загрузка файла
           </button>
         </div>
         <div className="bg-[var(--bg-blue)] fixed bottom-0 h-105 w-full rounded-t-4xl flex flex-col py-2">
           <h2 className="mb-6 text-center text-2xl font-semibold text-white">
-            Параметры записи
+            {streamMode ? "Параметры записи" : "Параметры обработки"}
           </h2>
 
           {/* Grid */}
@@ -259,13 +263,13 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
             <div>
               {/* File name */}
               <label className="mb-4 block w-120">
-                <input
+                {streamMode && <input
                   type="text"
                   placeholder="Название файла"
                   className="w-full rounded-none border-2 border-black bg-white px-3 py-2 placeholder-black/40 focus:placeholder-black/20 focus:outline-none text-black transition"
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
-                />
+                /> }
               </label>
               <Checkbox
                 checked={autoBreath}
@@ -302,12 +306,12 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                 label="Авторазметка дыхания"
               />
 
-              <Checkbox
+              {streamMode && <Checkbox
                 className="mt-18"
                 checked={sound}
                 onChange={() => setSound((v) => !v)}
                 label="Включить звук"
-              />
+              />}
             </div>
 
             {/* Right column */}
