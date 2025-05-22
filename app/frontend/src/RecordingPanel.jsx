@@ -12,6 +12,20 @@ function timeStringToSeconds (t) {
   return h * 3600 + m * 60 + s + ms / 1000
 }
 
+function rowsToCSV(rows) {
+  if (!rows || rows.length === 0) return "";
+
+  // Get all unique keys from first row
+  const headers = Object.keys(rows[0]);
+  const csvRows = [
+    headers.join(","), // header row
+    ...rows.map(row =>
+      headers.map(h => JSON.stringify(row[h] ?? "")).join(",")
+    )
+  ];
+  return csvRows.join("\n");
+}
+
 const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, playbackUrl, cuts }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
@@ -68,7 +82,17 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
     if (!parentChecked) setters.forEach((fn) => fn());
   };
 
- 
+ const handleDownloadCSV = () => {
+  const csv = rowsToCSV(rows);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName ? `${fileName}.csv` : "results.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
   
 
   // ────────────────────────── render ──────────────────────────
@@ -200,9 +224,9 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
           )}
           <p>Авторазметка: {autoBreathMarkup ? "да" : "нет"}</p>
           <div className="flex flex-col gap-2 justify-self-end mt-2">
-            {(resultsSection === 0 || resultsSection === 2) && <><button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Изменить вручную</button>
-            <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Авторазметка</button></>}
-            {resultsSection === 0 && <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Сохранить в CSV</button>}
+            {(resultsSection === 0 || resultsSection === 2) && <><button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={() => {}}>Изменить вручную</button>
+            <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={() => {}}>Авторазметка</button></>}
+            {resultsSection === 0 && <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none cursor-pointer" onClick={handleDownloadCSV}>Сохранить в CSV</button>}
           </div>
         </div>
       </div>
