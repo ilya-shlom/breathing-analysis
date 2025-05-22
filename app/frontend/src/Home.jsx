@@ -405,7 +405,8 @@ function timeStringToSeconds (t) {
         isRecording={isRecording} 
         finished={finished} 
         playbackUrl={playbackUrl}
-        rows={rows} />
+        rows={rows}
+        cuts={cutsRef.current} />
       </main>
       
     </div>

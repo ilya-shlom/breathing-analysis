@@ -2,11 +2,17 @@
 import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from "react";
 import WaveSurfer from 'wavesurfer.js';
 import Spectrogram from 'wavesurfer.js/dist/plugins/spectrogram.js';
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js'
 
 
 import Table from "./Table";
 
-const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, playbackUrl }, ref) => {
+function timeStringToSeconds (t) {
+  const [h, m, s, ms] = t.split(':').map(Number)
+  return h * 3600 + m * 60 + s + ms / 1000
+}
+
+const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, playbackUrl, cuts }, ref) => {
   // ────────────────────────── state ──────────────────────────
   const [autoBreath, setAutoBreath] = useState(false);
   const [autoBreathByText, setAutoBreathByText] = useState(false);
@@ -103,7 +109,77 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
           autoBreathByText={autoBreathByText} 
           />}
           {resultsSection === 1 && <SpectrogramComponent playbackUrl={playbackUrl} />}
-          {resultsSection === 2 && <p>Текст и волна</p>}
+          {resultsSection === 2 && 
+          <div className="overflow-y-auto pr-1
+          [&::-webkit-scrollbar]:w-1
+          [&::-webkit-scrollbar-track]:bg-black/10
+          [&::-webkit-scrollbar-thumb]:bg-white/70 [&::-webkit-scrollbar-thumb]:rounded">
+            <h3>Полная расшифровка дыхания</h3>
+            <div className="flex flex-col bg-[#EBEBEB] p-2 w-120">
+              <div className="flex flex-wrap">
+                {rows.map((r, i) => (
+                  <p
+                    key={i} // make sure to add a unique key
+                    className={r.inhale_exhale === 'inhale' ? 'text-[#00bdff]' : 'text-[#ff0000]'}
+                  >
+                    {r.transcript}&nbsp;
+                  </p>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-row gap-5">
+                <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#00BDFF]"></div>Вдох</span>
+                <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#FF0000]"></div>Выдох</span>
+              </div>
+            </div>
+            <h3 className="mt-3">Размеченная волна</h3>
+            <WaveComponent playbackUrl={playbackUrl} cuts={cuts} coloring={rows.map(r => r.inhale_exhale)} />
+
+            {autoBreathByText &&
+            <>
+              <h3 className="mt-5">Полная расшифровка дыхания по тексту</h3>
+              <div className="flex flex-col bg-[#EBEBEB] p-2 w-120">
+                <div className="flex flex-wrap">
+                  {rows.map((r, i) => (
+                    <p
+                      key={i} // make sure to add a unique key
+                      className={r.ie_predicted_text === 'inhale' ? 'text-[#00bdff]' : 'text-[#ff0000]'}
+                    >
+                      {r.transcript}&nbsp;
+                    </p>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-row gap-5">
+                  <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#00BDFF]"></div>Вдох</span>
+                  <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#FF0000]"></div>Выдох</span>
+                </div>
+              </div>
+              <h3 className="mt-3">Размеченная волна</h3>
+              <WaveComponent playbackUrl={playbackUrl} cuts={cuts} coloring={rows.map(r => r.ie_predicted_text)} />
+            </>}
+            {autoBreathByAudio &&
+            <>
+              <h3 className="mt-5">Полная расшифровка дыхания по аудио</h3>
+              <div className="flex flex-col bg-[#EBEBEB] p-2 w-120">
+                <div className="flex flex-wrap">
+                  {rows.map((r, i) => (
+                    <p
+                      key={i} // make sure to add a unique key
+                      className={r.ie_predicted_audio === 'inhale' ? 'text-[#00bdff]' : 'text-[#ff0000]'}
+                    >
+                      {r.transcript}&nbsp;
+                    </p>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-row gap-5">
+                  <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#00BDFF]"></div>Вдох</span>
+                  <span className="flex flex-row align-center items-center gap-1"><div className="w-3 h-3 bg-[#FF0000]"></div>Выдох</span>
+                </div>
+              </div>
+              <h3 className="mt-3">Размеченная волна</h3>
+              <WaveComponent playbackUrl={playbackUrl} cuts={cuts} coloring={rows.map(r => r.ie_predicted_audio)} />
+            </>}
+          </div>
+          }
         <div className="text-right justify-self-end">
           <h4 className="font-md">Параметры записи:</h4>
           <p>Название файла: {fileName}</p>
@@ -376,6 +452,60 @@ function SpectrogramComponent({ playbackUrl }) {
       <div ref={spectroRef} style={{ width: '100%', height: 200 }} />
     </div>
   );
+}
+
+function WaveComponent({ playbackUrl, cuts, coloring }) {
+  const containerRef = useRef(null);
+  const waveSurferRef = useRef(null);
+
+  useEffect(() => {
+    if (!playbackUrl) return;
+    // Clean up any existing instance
+    waveSurferRef.current && waveSurferRef.current.destroy();
+
+    // Create regions plugin
+    const regionsPlugin = RegionsPlugin.create();
+    // Initialize WaveSurfer
+    const ws = WaveSurfer.create({
+      container: containerRef.current,
+      url: playbackUrl,
+      normalize: true,
+      cursorWidth: 0,
+      height: 100,
+       waveColor: '#000000',
+      plugins: [regionsPlugin],
+    });
+    waveSurferRef.current = ws;
+
+    console.log(coloring)
+    console.log("cuts", cuts)
+
+    // When audio is ready, add regions using provided cuts and coloring
+    ws.on('decode', () => {
+      if (!Array.isArray(cuts)) return;
+      cuts.forEach((time, index) => {
+        if (index < cuts.length - 1) {
+          regionsPlugin.addRegion({
+            start: timeStringToSeconds(time),
+            end: timeStringToSeconds(cuts[index + 1]),
+            drag: false,
+            resize: false,
+            color: coloring[index] === 'inhale' ? 'rgba(204,241,255,0.5)' : 'rgba(255,204,204,0.5)',
+            // content: coloring[index] === 'inhale' ? 'Вдох' : 'Выдох',
+
+          });
+        }
+      });
+    });
+
+    // Cleanup on unmount or playbackUrl change
+    return () => {
+      ws.destroy();
+      waveSurferRef.current = null;
+    };
+  }, [playbackUrl, cuts, coloring]);
+
+  return <div ref={containerRef} style={{ width: '100%' }} />;
 }
 
 export default RecordingPanel;
