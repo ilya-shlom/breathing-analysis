@@ -199,6 +199,11 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, play
             </>
           )}
           <p>Авторазметка: {autoBreathMarkup ? "да" : "нет"}</p>
+          <div className="flex flex-col gap-2 justify-self-end mt-2">
+            {(resultsSection === 0 || resultsSection === 2) && <><button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Изменить вручную</button>
+            <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Авторазметка</button></>}
+            {resultsSection === 0 && <button className="bg-white text-black rounded-full w-full px-8 py-3 outline-none" onClick={() => {}}>Сохранить в CSV</button>}
+          </div>
         </div>
       </div>
         </div>
