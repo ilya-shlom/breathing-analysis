@@ -50,7 +50,7 @@ export default function useRowsOverlay() {
     !isOpen ? null : (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto">
         <div className="w-full rounded-lg bg-white p-8 mx-3 shadow-xl flex flex-col">
-          <h2 className="mb-4 text-xl font-semibold">Edit rows</h2>
+          <h2 className="mb-4 text-xl font-semibold">Редактирование таблицы</h2>
 
           {draftRows.map((row, i) =>
             typeof row === 'string' ? (
@@ -96,7 +96,7 @@ export default function useRowsOverlay() {
             }
             className="mb-4 rounded bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200"
           >
-            + Add row
+            + Добавить строку
           </button>
 
           <div className="flex justify-end gap-2">
@@ -104,13 +104,13 @@ export default function useRowsOverlay() {
               onClick={() => setIsOpen(false)}
               className="rounded bg-gray-100 px-4 py-2 text-sm hover:bg-gray-200"
             >
-              Cancel
+              Отмена
             </button>
             <button
               onClick={saveAndClose}
               className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
             >
-              Save
+              Сохранить
             </button>
           </div>
         </div>

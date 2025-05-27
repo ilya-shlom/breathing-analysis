@@ -12,6 +12,7 @@ from flask_cors import CORS
 import joblib
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
 import subprocess
 import shutil
 from sklearn.feature_extraction.text import HashingVectorizer
@@ -28,11 +29,14 @@ from tools import optimize_audio, create_waveform
 
 from src.utils import *
 
-UPLOAD_FOLDER = 'web_recordings' # 'web_recordings'
-AUDIO_FOLDER = 'audio'
-GRAPH_FOLDER = 'graphs'
+load_dotenv()
 
-MODELS_FOLDER = 'models'
+
+
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'web_recordings')
+AUDIO_FOLDER = os.getenv('AUDIO_FOLDER', 'audio')
+GRAPH_FOLDER = os.getenv('GRAPH_FOLDER', 'graphs')
+MODELS_FOLDER = os.getenv('MODELS_FOLDER', 'models')
 
 IE_MODEL_FILE = f"{MODELS_FOLDER}/model_transcript_fingerprint.pkl"
 
@@ -214,7 +218,6 @@ def save_file():
         ie_predicted_audio = None
         activity_predicted_text = None
         activity_predicted_audio = None
-        # Здесь поменять названия переменных и обновить логику в соответствии с новыми названиями 
 
         # print(prefix)
         filename = "temp.webm"
@@ -225,11 +228,11 @@ def save_file():
             # change codec
             if not os.path.exists(f'{UPLOAD_FOLDER}/{prefix}'):
                 os.makedirs(f'{UPLOAD_FOLDER}/{prefix}')
-                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/audio')
-                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/graphs')
+                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/{AUDIO_FOLDER}')
+                os.makedirs(f'{UPLOAD_FOLDER}/{prefix}/{GRAPH_FOLDER}')
 
             if not client_data[sid]["autoBreath"]:
-                output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{current_step}_{time}.wav'
+                output_filename = f'{UPLOAD_FOLDER}/{prefix}/{AUDIO_FOLDER}/{prefix}_{current_step}_{time}.wav'
             else:
                 output_filename = 'temp_proccessed.wav'
                 
@@ -256,7 +259,7 @@ def save_file():
                     prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
                     print(f"Predicted class: {prediction}")
                     ie_predicted_text = 'exhale' if prediction == 1 else 'inhale'
-                    final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/audio/{prefix}_{ie_predicted_text}_{recording_time}.wav'
+                    final_output_filename = f'{UPLOAD_FOLDER}/{prefix}/{AUDIO_FOLDER}/{prefix}_{ie_predicted_text}_{recording_time}.wav'
                     shutil.copyfile(output_filename, final_output_filename)
                 # Audio-based prediction
                 if client_data[sid]["autoBreathByAudio"]:
@@ -327,7 +330,7 @@ def remove_file():
         try:
             filename = RECORDING_FILE_TEMPLATE.format(sid=sid)
             if os.path.exists(filename):
-                final_filename = os.path.abspath(f'web_recordings/{prefix}/audio/{prefix}_full_{recording_time}.wav')
+                final_filename = os.path.abspath(f'{UPLOAD_FOLDER}/{prefix}/{AUDIO_FOLDER}/{prefix}_full_{recording_time}.wav')
                 subprocess.run([
                     "ffmpeg", "-y", "-fflags", "+genpts", "-i", filename, "-ar", "44100", "-ac", "2", "-f", "wav", final_filename
                     ])

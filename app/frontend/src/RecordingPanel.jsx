@@ -282,6 +282,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                 }}
                 className="mt-4"
                 label="Автоопределение вдоха/выдоха"
+                tooltip="Автоматически определять, является ли фрагмент вдохом или выдохом"
               />
 
               <div className="mt-6 space-y-2">
@@ -396,7 +397,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
 /*                                  helpers                                   */
 /* -------------------------------------------------------------------------- */
 
-function Checkbox({ label, className = "", ...props }) {
+function Checkbox({ label, tooltip, className = "", ...props }) {
   return (
     <label
       className={`inline-flex items-center gap-2 pr-4 relative ${
@@ -423,11 +424,14 @@ function Checkbox({ label, className = "", ...props }) {
         {label}
       </span>
       {/* Tooltip icon */}
-      <span
-        className="ml-1 select-none text-md leading-none text-black border-1 border-black rounded-full w-5 h-5 flex items-center justify-center"
-        title="Что это значит?"
-      >
+      <span className="ml-1 select-none text-md leading-none text-black border border-black rounded-full w-5 h-5 flex items-center justify-center relative group">
         ?
+        <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center w-5">
+          <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/70" />
+          <div className="ml-0 px-2 py-1 bg-black/70 text-white text-sm rounded shadow-lg w-40">
+            {tooltip || "Help"}
+          </div>
+        </div>
       </span>
     </label>
   );

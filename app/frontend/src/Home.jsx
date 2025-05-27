@@ -8,6 +8,18 @@ import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.js'
 import WaveOptions from "./WaveOptions";
 
 
+function clampMiddle(text, maxLength = 10) {
+  if (text.length <= maxLength) return text;
+  const charsToShow = maxLength - 3; // 3 for "..."
+  const frontChars = Math.ceil(charsToShow / 2);
+  const backChars = Math.floor(charsToShow / 2);
+  return (
+    text.slice(0, frontChars) +
+    '...' +
+    text.slice(text.length - backChars)
+  );
+}
+
 
 const GateProcessorCode = `
 class GateProcessor extends AudioWorkletProcessor {
@@ -431,22 +443,25 @@ useEffect(() => {
                 className="hidden"
                 onChange={handleFileUpload}
               />
-              <div style={{
-                  width: '1px',
-                  height: '30px',
-                  background: 'black'
-                }} />
               {uploadedFile && !fileSent && (
+                <>
+                <div style={{
+                    width: '1px',
+                    height: '30px',
+                    background: 'black'
+                  }} />
+              
                 <Check
                   onClick={handleFileSend}
                   
                 /> 
+                </>
               )}
             </div>
           )}
           
           <div className="mr-2">
-            {streamMode ? <Stopwatch ref={stopwatchRef} /> : uploadedFile ? <p>{uploadedFile.name}</p> : <p>Файл не выбран</p>}
+            {streamMode ? <Stopwatch ref={stopwatchRef} /> : uploadedFile ? <p>{clampMiddle(uploadedFile.name, 20)}</p> : <p>Файл не выбран</p>}
           </div>
          </div>
          <div className="text-xl font-bold pr-10">
