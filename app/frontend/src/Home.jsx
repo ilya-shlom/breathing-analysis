@@ -116,6 +116,13 @@ function timeStringToSeconds (t) {
   const handleFileSend = async () => {
     if (!uploadedFile) return;
     const fd = new FormData();
+    fd.append('sid', sidRef.current)
+    const panelData = panelRef.current?.getFormData?.();
+    if (panelData) {
+      Object.entries(panelData).forEach(([key, value]) => {
+        fd.append(key, value);
+      });
+    }    
     fd.append('file', uploadedFile);
     try {
       const res = await fetch('http://127.0.0.1:5001/upload', {

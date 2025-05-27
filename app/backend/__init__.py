@@ -34,6 +34,7 @@ load_dotenv()
 
 
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'web_recordings')
+OFFLINE_UPLOAD_FOLDER = os.getenv('OFFLINE_UPLOAD_FOLDER', 'offline_recordings')
 AUDIO_FOLDER = os.getenv('AUDIO_FOLDER', 'audio')
 GRAPH_FOLDER = os.getenv('GRAPH_FOLDER', 'graphs')
 MODELS_FOLDER = os.getenv('MODELS_FOLDER', 'models')
@@ -91,7 +92,6 @@ client_data = defaultdict(lambda: {"chunks": 0,
 
 
 ie_fingerprint_model = joblib.load(IE_MODEL_FILE)
-transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript.pkl")
 transcript_model = joblib.load(f"{MODELS_FOLDER}/model_transcript_breath.pkl")
 hash_vectorizer = HashingVectorizer(analyzer='char_wb', ngram_range=(3, 5), n_features=50)
 
@@ -135,6 +135,31 @@ def handle_audio_chunk(chunk):
     # print(f"Received chunk at {current_timestamp}, saved to {RECORDING_FILE}")
     # Optionally, you can add any logic (logging, broadcasting, etc.) here.
 
+# ------------------
+# OFFLINE PROCESSING
+# ------------------
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in request'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    # Save file to OFFLINE_UPLOAD_FOLDER
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(OFFLINE_UPLOAD_FOLDER, filename)
+    file.save(file_path)
+
+    try:
+        # Run transcription
+        transcript = bt.transcript(file_path)
+        return jsonify({'filename': filename, 'transcript': transcript})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 
 @app.route('/transcript', methods=['GET', 'POST'])
 def transcript():
