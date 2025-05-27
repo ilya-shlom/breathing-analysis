@@ -109,15 +109,10 @@ def index():
     return render_template("index.html")
 
 
-@app.route('/audio')
-def audio():
-    # Serve the current recording.
-    # Note: Depending on your OS, reading a file while it's being written to may require extra care.
-    # Reminder: include 'sid' as a query parameter (?sid=...) if needed.
-    sid = request.args.get('sid') or session.get('socket_id')
-    if not sid:
-        return jsonify({"error": "Session not initialized"}), 400
-    return send_file(RECORDING_FILE_TEMPLATE.format(sid=sid), mimetype='audio/webm')
+
+# ------------------
+# STREAN HANDLING
+# ------------------
 
 @socketio.on('audio_chunk')
 def handle_audio_chunk(chunk):
@@ -161,6 +156,10 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
     
 
+# ------------------
+# API CALLS
+# ------------------
+
 @app.route('/transcript', methods=['GET', 'POST'])
 def transcript():
     if request.method == "GET":
@@ -175,6 +174,65 @@ def transcript():
             return jsonify({"error": str(e)}), 500
     else:
         return jsonify({"error": "Method not allowed"}), 405
+    
+
+# @app.route('/markdown', methods=['GET'])
+# def markdown(): # WIP
+
+@app.route('/inhale_exhale', methods=['GET'])
+def get_phase():
+    if request.method == "GET":
+        filename = request.args.get("filename")
+        method = request.args.get("method")
+        if not filename:
+            return jsonify({"error": "Filename parameter is missing"}), 400
+        if not method:
+            method = "wave"
+        try:
+            if method == "wave":
+                result = get_breath_params.predict(get_breath_params.IE, filename)
+            elif method == "transcript":
+                transcript = bt.transcript(filename)
+                prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                result = 'exhale' if prediction == 1 else 'inhale'
+            else:
+                return jsonify({"error": "Invalid method parameter"}), 400
+            return jsonify({"filename": filename,
+                            "activity": result})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Method not allowed"}), 405
+
+
+@app.route('activity', methods=['GET'])
+def get_activity():
+    if request.method == "GET":
+        filename = request.args.get("filename")
+        method = request.args.get("method")
+        if not filename:
+            return jsonify({"error": "Filename parameter is missing"}), 400
+        if not method:
+            method = "wave"
+        try:
+            if method == "wave":
+                result = get_breath_params.predict(get_breath_params.AR, filename)
+            elif method == "transcript":
+                transcript = bt.transcript(filename)
+                detected_activity_cluster = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+                result = 'active' if detected_activity_cluster == 2 else 'resting' # if detected_activity_cluster == 1 else 'Other'
+            else:
+                return jsonify({"error": "Invalid method parameter"}), 400
+            return jsonify({"filename": filename,
+                            "activity": result})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Method not allowed"}), 405
+
+# ------------------
+# LIVE PROCESSING
+# ------------------
 
 
 @app.route('/start', methods=['GET', 'POST'])
