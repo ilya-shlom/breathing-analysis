@@ -1,4 +1,4 @@
-PyBreathTranscript==1.0.0
+PyBreathTranscript==1.1.0
 PyBreathParams==1.0.4
 Flask==3.1.0
 flask-socketio==5.5.1
