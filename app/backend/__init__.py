@@ -21,7 +21,7 @@ import soundfile as sf
 from pydub import AudioSegment
 
 from PyBreathTranscript import transcript as bt
-from PyBreathTranscript.transcript_dtw import get_recognizer
+from PyBreathTranscript.transcript_dtw import get_recognizer, transcribe_file
 
 import PyBreathParams.get_breath_params as get_breath_params
 
@@ -176,8 +176,18 @@ def transcript():
         return jsonify({"error": "Method not allowed"}), 405
     
 
-# @app.route('/markdown', methods=['GET'])
-# def markdown(): # WIP
+@app.route('/markdown', methods=['GET'])
+def markdown():
+    if request.method == "GET":
+        filename = request.args.get("filename")
+        if not filename:
+            return jsonify({"error": "Filename parameter is missing"}), 400
+        try:
+            result = transcribe_file(filename)
+            return jsonify({"filename": filename,
+                            "transcript": result})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
 @app.route('/inhale_exhale', methods=['GET'])
 def get_phase():
@@ -205,7 +215,7 @@ def get_phase():
         return jsonify({"error": "Method not allowed"}), 405
 
 
-@app.route('activity', methods=['GET'])
+@app.route('/activity', methods=['GET'])
 def get_activity():
     if request.method == "GET":
         filename = request.args.get("filename")
@@ -229,11 +239,11 @@ def get_activity():
             return jsonify({"error": str(e)}), 500
     else:
         return jsonify({"error": "Method not allowed"}), 405
+    
 
 # ------------------
 # LIVE PROCESSING
 # ------------------
-
 
 @app.route('/start', methods=['GET', 'POST'])
 def get_start_params():
