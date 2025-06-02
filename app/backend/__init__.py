@@ -58,6 +58,52 @@ DATA_COLLECT_MODE = 1
 PROD_MODE = 2
 APP_MODE = DEV_MODE
 
+def find_silence_indices(s: str) -> list[int]:
+    """
+    Return a list of all start‐indexes i such that
+    s[i : i + WINDOW_SIZE] matches:
+      – LETTERS_BEFORE_SILENCE characters that are not “_”
+      – followed immediately by SILENCE_LENGTH underscores.
+    """
+    indices: list[int] = []
+    n = len(s)
+
+    # Slide a WINDOW_SIZE‐length window over s
+    for i in range(n - SILENCE_VALIDATION + 1):
+        window = s[i : i + SILENCE_VALIDATION]
+        if re.match(SILENCE_PATTERN, window):
+            indices.append(i)
+
+    return indices
+
+
+def format_milliseconds(ms: int) -> str:
+    """
+    Convert milliseconds to a string in format "HH:MM:SS:mmm".
+    """
+    hours = ms // 3600000
+    remainder = ms % 3600000
+    minutes = remainder // 60000
+    remainder = remainder % 60000
+    seconds = remainder // 1000
+    milliseconds = remainder % 1000
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{milliseconds:03d}"
+
+
+def markdown_breath(filename: str) -> list[dict]:
+    silence_transcription = transcribe_file(filename)
+    transcription = bt.transcript(filename)
+    silence_indices = find_silence_indices(silence_transcription)
+    silence_indices = [0, *silence_indices]
+    phase = ["inhale", "exhale"]
+    breath_markdown = []
+    for i in range(len(silence_indices) - 1):
+           breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
+                                   "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
+                                   "inhale_exhale": phase[i % 2]}) 
+    return breath_markdown
+
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
@@ -150,8 +196,8 @@ def upload_file():
 
     try:
         # Run transcription
-        transcript = bt.transcript(file_path)
-        return jsonify({'filename': filename, 'transcript': transcript})
+        breath_markdown = markdown_breath(file_path)
+        return jsonify({'filename': filename, 'transcript': breath_markdown}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -183,9 +229,9 @@ def markdown():
         if not filename:
             return jsonify({"error": "Filename parameter is missing"}), 400
         try:
-            result = transcribe_file(filename)
+            breath_markdown = markdown_breath(filename)
             return jsonify({"filename": filename,
-                            "transcript": result})
+                            "transcript": breath_markdown})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
