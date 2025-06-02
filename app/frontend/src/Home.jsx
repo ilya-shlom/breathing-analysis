@@ -131,7 +131,21 @@ function timeStringToSeconds (t) {
         credentials: 'include',
       });
       if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
       console.log('File uploaded successfully');
+      const parsedRows = data.transcript.map(item => ({
+        transcript: item.transcript,
+        recording_time: item.time,
+        inhale_exhale: item.inhale_exhale,
+        activity: data.filename,
+      }));
+      setFinished(true);
+      setRows(parsedRows);
+      cutsRef.current = data.transcript.map(item => item.time);
+      setLiveText(data.full_transcript);
+      const blob = new Blob([uploadedFile], { type: uploadedFile.type });
+      const url  = URL.createObjectURL(blob)
+      setPlaybackUrl(url)
       setFileSent(true);
     } catch (err) {
       console.error('File upload error:', err);

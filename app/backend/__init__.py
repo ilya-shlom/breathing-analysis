@@ -90,7 +90,7 @@ def format_milliseconds(ms: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{milliseconds:03d}"
 
 
-def markdown_breath(filename: str) -> list[dict]:
+def markdown_breath(filename: str) -> tuple[list[dict], str]:
     silence_transcription = transcribe_file(filename)
     transcription = bt.transcript(filename)
     silence_indices = find_silence_indices(silence_transcription)
@@ -101,7 +101,7 @@ def markdown_breath(filename: str) -> list[dict]:
            breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
                                    "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
                                    "inhale_exhale": phase[i % 2]}) 
-    return breath_markdown
+    return breath_markdown, transcription
 
 
 
@@ -196,8 +196,10 @@ def upload_file():
 
     try:
         # Run transcription
-        breath_markdown = markdown_breath(file_path)
-        return jsonify({'filename': filename, 'transcript': breath_markdown}), 200
+        breath_markdown, transcription = markdown_breath(file_path)
+        return jsonify({'filename': filename,
+                        'full_transcript': transcription,
+                        'transcript': breath_markdown}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
@@ -229,8 +231,9 @@ def markdown():
         if not filename:
             return jsonify({"error": "Filename parameter is missing"}), 400
         try:
-            breath_markdown = markdown_breath(filename)
+            breath_markdown, transcription = markdown_breath(filename)
             return jsonify({"filename": filename,
+                            "full_transcription": transcription,
                             "transcript": breath_markdown})
         except Exception as e:
             return jsonify({"error": str(e)}), 500
