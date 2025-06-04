@@ -291,12 +291,14 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                   disabled={!autoBreath}
                   onChange={() => setAutoBreathByText((v) => !v)}
                   label="По тексту"
+                  tooltip="Использовать текстовую расшифровку для определения вдоха и выдоха"
                 />
                 <Checkbox
                   checked={autoBreathByAudio}
                   disabled={!autoBreath}
                   onChange={() => setAutoBreathByAudio((v) => !v)}
                   label="По аудио"
+                  tooltip="Использовать анализ аудио для определения вдоха и выдоха"
                 />
               </div>
 
@@ -305,6 +307,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                 checked={autoBreathMarkup}
                 onChange={() => setAutoBreathMarkup((v) => !v)}
                 label="Авторазметка дыхания"
+                tooltip="Автоматически отмечать вдохи и выдохи на звуковой волне"
               />
 
               {streamMode && <Checkbox
@@ -312,6 +315,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                 checked={sound}
                 onChange={() => setSound((v) => !v)}
                 label="Включить звук"
+                tooltip="Записывать звук вместе с данными"
               />}
             </div>
 
@@ -327,6 +331,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                   ]);
                 }}
                 label="Автоопределение активности"
+                tooltip="Автоматически определять активность пользователя"
               />
 
               <div className="mt-4 space-y-2">
@@ -335,12 +340,14 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
                   disabled={!autoActivity}
                   onChange={() => setAutoActivityByText((v) => !v)}
                   label="По тексту"
+                  tooltip="Использовать текстовую расшифровку для определения активности"
                 />
                 <Checkbox
                   checked={autoActivityByAudio}
                   disabled={!autoActivity}
                   onChange={() => setAutoActivityByAudio((v) => !v)}
                   label="По аудио"
+                  tooltip="Использовать анализ аудио для определения активности"
                 />
               </div>
             </div>
