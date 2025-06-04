@@ -142,6 +142,7 @@ function timeStringToSeconds (t) {
       setFinished(true);
       setRows(parsedRows);
       cutsRef.current = data.transcript.map(item => item.time);
+      cutsRef.current.push(data.duration);
       setLiveText(data.full_transcript);
       const blob = new Blob([uploadedFile], { type: uploadedFile.type });
       const url  = URL.createObjectURL(blob)
@@ -428,15 +429,7 @@ useEffect(() => {
           {streamMode ? !isRecording ? 
           finished ? 
           (
-            <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
-              {!isPlaying ? <PlayArrow onClick={handlePlay} /> : <Pause onClick={handlePlay} />}
-                <div style={{
-                  width: '1px',
-                  height: '30px',
-                  background: 'black'
-                }} />
-              <Refresh onClick={handleRestart} />
-            </div>
+            <FinishedPanel handlePlay={handlePlay} handleRestart={handleRestart} isPlaying={isPlaying}/>
           ) : (
             <div className="h-10 w-10 rounded-full bg-white/60 hover:cursor-pointer flex items-center justify-center">
               <Mic onClick={handleStartRecording} id="mic-button" />
@@ -451,7 +444,7 @@ useEffect(() => {
                 }} />
               <Stop onClick={handleStopRecording} id="mic-stop" />
             </div>
-          ) : (
+          ) : !finished ? (
             <div className={`h-10 ${uploadedFile ? 'w-20 justify-between flex-row px-2' : 'w-10 justify-center'} rounded-full bg-white/60 hover:cursor-pointer flex items-center`}>
               {/* File upload icon */}
               <label htmlFor="file-upload" className="cursor-pointer">
@@ -479,6 +472,8 @@ useEffect(() => {
                 </>
               )}
             </div>
+          ) : (
+            <FinishedPanel handlePlay={handlePlay} handleRestart={handleRestart} isPlaying={isPlaying}/>
           )}
           
           <div className="mr-2">
@@ -517,4 +512,18 @@ useEffect(() => {
       
     </div>
   );
+}
+
+const FinishedPanel = ({handlePlay, handleRestart, isPlaying}) => {
+  return (
+    <div className="h-10 w-20 rounded-full bg-white/60 hover:cursor-pointer flex flex-row items-center justify-between px-2">
+              {!isPlaying ? <PlayArrow onClick={handlePlay} /> : <Pause onClick={handlePlay} />}
+                <div style={{
+                  width: '1px',
+                  height: '30px',
+                  background: 'black'
+                }} />
+              <Refresh onClick={handleRestart} />
+            </div>
+  )
 }

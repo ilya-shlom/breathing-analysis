@@ -211,7 +211,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
         <div className="text-right justify-self-end">
           <h4 className="font-md">Параметры записи:</h4>
           <p>Название файла: {fileName}</p>
-          <p>Режим: потоковая запись</p>
+          <p>Режим: {streamMode ? 'потоковая запись' : 'офлайн-обработка'}</p>
           <p>Автоопределение вдоха/выдоха: {autoBreath ? "да" : "нет"}</p>
           {autoBreath && (
             <>

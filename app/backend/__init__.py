@@ -90,19 +90,28 @@ def format_milliseconds(ms: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{milliseconds:03d}"
 
 
-def markdown_breath(filename: str) -> tuple[list[dict], str]:
+def markdown_breath(filename: str, autosplit: bool = True) -> tuple[list[dict], str]:
     silence_transcription = transcribe_file(filename)
     transcription = bt.transcript(filename)
     silence_indices = find_silence_indices(silence_transcription)
     silence_indices = [0, *silence_indices]
     phase = ["inhale", "exhale"]
     breath_markdown = []
-    for i in range(len(silence_indices) - 1):
-           breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
-                                   "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
-                                   "inhale_exhale": phase[i % 2]}) 
+    if autosplit:
+        for i in range(len(silence_indices) - 1):
+               breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
+                                       "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
+                                       "inhale_exhale": phase[i % 2]}) 
+    else:
+        breath_markdown.append({"time": format_milliseconds(0), 
+                                       "transcript": transcription,
+                                       "inhale_exhale": "inhale"}) 
     return breath_markdown, transcription
 
+def get_wav_duration(filepath: str) -> float:
+    audio = AudioSegment.from_wav(filepath)
+    duration_ms = len(audio)
+    return duration_ms
 
 
 app = Flask(__name__)
@@ -186,6 +195,7 @@ def upload_file():
         return jsonify({'error': 'No file part in request'}), 400
 
     file = request.files['file']
+    
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
@@ -194,11 +204,40 @@ def upload_file():
     file_path = os.path.join(OFFLINE_UPLOAD_FOLDER, filename)
     file.save(file_path)
 
+    # Get full file duration
+    file_duration = format_milliseconds(get_wav_duration(file_path))
+    
+
+    sid = request.form.get('sid') or session.get('socket_id')
+    if not sid:
+        return jsonify({"error": "Session not initialized"}), 400
+    if request.method == "POST":
+        filename, \
+        autoBreath, autoBreathByText, autoBreathByAudio, \
+        autoActivity, autoActivityByText, autoActivityByAudio, \
+        autosplit = fetch_file_data(request, ["fileName",
+                                            "autoBreath",
+                                            "autoBreathByText",
+                                            "autoBreathByAudio",
+                                            "autoActivity",
+                                            "autoActivityByText",
+                                            "autoActivityByAudio",
+                                            "autoBreathMarkup",]) 
+        client_data[sid]["fileName"] = filename
+        client_data[sid]["autoBreath"] = str_to_bool(autoBreath)
+        client_data[sid]["autoBreathByText"] = str_to_bool(autoBreathByText)
+        client_data[sid]["autoBreathByAudio"] = str_to_bool(autoBreathByAudio)
+        client_data[sid]["autoActivity"] = str_to_bool(autoActivity)
+        client_data[sid]["autoActivityByText"] = str_to_bool(autoActivityByText)
+        client_data[sid]["autoActivityByAudio"] = str_to_bool(autoActivityByAudio)
+        client_data[sid]["autosplit"] = str_to_bool(autosplit)
     try:
         # Run transcription
         breath_markdown, transcription = markdown_breath(file_path)
+
         return jsonify({'filename': filename,
                         'full_transcript': transcription,
+                        'duration': file_duration,
                         'transcript': breath_markdown}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -324,7 +363,6 @@ def get_start_params():
         client_data[sid]["autoActivityByText"] = str_to_bool(autoActivityByText)
         client_data[sid]["autoActivityByAudio"] = str_to_bool(autoActivityByAudio)
         client_data[sid]["autosplit"] = str_to_bool(autosplit)
-        print("WAT??", autosplit, client_data[sid]["autosplit"])
         if APP_MODE == DATA_COLLECT_MODE:
             # Find the next filename based on existing files in the upload folder
             existing_files = [f for f in os.listdir(f"{UPLOAD_FOLDER}/active") if f.endswith(".wav")]
