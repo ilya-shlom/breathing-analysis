@@ -1,5 +1,10 @@
-"use client";
-// import { useRouter } from "next/navigation";
+import React from "react";
+import { Routes, Route, Link } from "react-router-dom";
+
+import Home from "./Home";
+import About from "./About";
+import Instructions from "./Instructions";
+
 
 export default function Navbar() {
 
@@ -9,9 +14,9 @@ export default function Navbar() {
          flex flex-row justify-between items-center">
           <h1>breathing-analysis</h1>
           <nav className="flex flex-row gap-10 underline text-lg">
-            <a href="/">Главная</a>
-            <a href="/about">Как это работает?</a>
-            <a href="/instruction">Инструкция</a>
+            <Link to="/">Главная</Link>
+            <Link to="/about">Как это работает?</Link>
+            <Link to="/instructions">Инструкция</Link>
             <img
             src="/github-mark-white.svg"
             alt="Github"
@@ -21,6 +26,7 @@ export default function Navbar() {
             // onClick={() => {router.push("https://github.com/ilya-shlom/breathing-analysis")}}
             priority />
           </nav>
+          {/* ── Route Definitions ───────────────────────────────────── */}
         </header>
     )
 }

@@ -1,6 +1,12 @@
 import "./index.css";
 import Navbar from "./Navbar";
-import Home from "./Home"; 
+
+import React from "react";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+
+import Home from "./Home";
+import About from "./About";
+import Instructions from "./Instructions";
 
 
 export const metadata = {
@@ -10,11 +16,32 @@ export const metadata = {
 
 export default function App() {
   return (
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        {/* When URL is exactly “/”, render Home */}
+        <Route path="/" element={<Home />} />
 
-      <>
-        <Navbar />
-        <Home />
-      </>
+        {/* When URL is “/about”, render About */}
+        <Route path="/about" element={<About />} />
 
+        {/* When URL is “/instructions”, render Instructions */}
+        <Route path="/instructions" element={<Instructions />} />
+
+        {/* (Optional) Catch‐all 404 route */}
+        <Route
+          path="*"
+          element={
+            <div>
+              <h2>404 – Page Not Found</h2>
+              <p>
+                Sorry, we couldn’t find that page. Go back to{" "}
+                <Link to="/">Home</Link>.
+              </p>
+            </div>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
