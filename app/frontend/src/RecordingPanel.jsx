@@ -405,6 +405,7 @@ const RecordingPanel = forwardRef(({ onSubmit, isRecording, finished, rows, setR
 /* -------------------------------------------------------------------------- */
 
 function Checkbox({ label, tooltip, className = "", ...props }) {
+  const [showTooltip, setShowTooltip] = useState(false);
   return (
     <label
       className={`inline-flex items-center gap-2 pr-4 relative ${
@@ -431,14 +432,22 @@ function Checkbox({ label, tooltip, className = "", ...props }) {
         {label}
       </span>
       {/* Tooltip icon */}
-      <span className="ml-1 select-none text-md leading-none text-black border border-black rounded-full w-5 h-5 flex items-center justify-center relative group">
-        ?
-        <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center w-5">
-          <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/70" />
-          <div className="ml-0 px-2 py-1 bg-black/70 text-white text-sm rounded shadow-lg w-40">
-            {tooltip || "Help"}
+      <span className="ml-1 relative">
+        <span
+          className="select-none text-md leading-none text-black border border-black rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          ?
+        </span>
+        {showTooltip && (
+          <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 z-10 flex items-center w-auto">
+            <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-r-4 border-r-black/70" />
+            <div className="ml-0 px-2 py-1 bg-black/70 text-white text-sm rounded shadow-lg w-40">
+              {tooltip || "Help"}
+            </div>
           </div>
-        </div>
+        )}
       </span>
     </label>
   );
