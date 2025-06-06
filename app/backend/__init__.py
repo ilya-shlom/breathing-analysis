@@ -62,7 +62,8 @@ PROD_MODE = 2
 APP_MODE = DEV_MODE
 
 
-def slice_and_get_params(wav_path: str, slice_start, slice_end):
+def slice_and_get_params(wav_path: str, slice_start, slice_end,
+                         get_ie_audio=False, get_ie_text=False, get_ar_audio=False, get_ar_text=False):
     """
     Load the WAV at wav_path, take only the first `slice_ms` milliseconds,
     and then call transcribe_file(), bt.transcript(), and get_breath_params on a temporary file.
@@ -86,13 +87,24 @@ def slice_and_get_params(wav_path: str, slice_start, slice_end):
         tmp.write(buf.read())
         tmp.flush()
 
+        ie_audio, ie_text, ar_audio, ar_text = None, None, None, None
 
-        # 6) Call breath parameter detection on the temp file
-        ie_param = get_breath_params.predict(get_breath_params.IE, tmp.name)
-        ar_param = get_breath_params.predict(get_breath_params.AR, tmp.name)
+        if get_ie_audio:
+            ie_audio = get_breath_params.predict(get_breath_params.IE, tmp.name)
+
+        if get_ar_audio:
+            ar_audio = get_breath_params.predict(get_breath_params.AR, tmp.name)
+
+        if get_ie_text:
+            ie_prediction = int(ie_fingerprint_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+            ie_text = 'exhale' if ie_prediction == 1 else 'inhale'
+
+        if get_ar_text:
+            activity_prediction = int(transcript_model.predict(hash_vectorizer.fit_transform([transcript]))[0])
+            ar_text = 'active' if activity_prediction == 2 else 'resting'
 
     # 7) Return both transcription results and breath parameters
-    return ie_param, ar_param
+    return ie_audio, ie_text, ar_audio, ar_text
 
 
 def find_silence_indices(s: str) -> list[int]:
@@ -127,7 +139,8 @@ def format_milliseconds(ms: int) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{milliseconds:03d}"
 
 
-def markdown_breath(filename: str, autosplit: bool = True) -> tuple[list[dict], str]:
+def markdown_breath(filename: str, autosplit: bool = True,
+                    get_ie_audio=False, get_ie_text=False, get_ar_audio=False, get_ar_text=False) -> tuple[list[dict], str]:
     silence_transcription = transcribe_file(filename)
     transcription = bt.transcript(filename)
     silence_indices = find_silence_indices(silence_transcription)
@@ -135,10 +148,22 @@ def markdown_breath(filename: str, autosplit: bool = True) -> tuple[list[dict], 
     phase = ["inhale", "exhale"]
     breath_markdown = []
     if autosplit:
+        ie_predicted_audio, ie_predicted_text, activity_predicted_audio, activity_predicted_text = None, None, None, None
         for i in range(len(silence_indices) - 1):
-               breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
-                                       "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
-                                       "inhale_exhale": phase[i % 2]}) 
+            ie_predicted_audio, 
+            ie_predicted_text, 
+            activity_predicted_audio,
+            activity_predicted_text = slice_and_get_params(filename, silence_indices[i] * CHUNK_LENGTH, silence_indices[i+1] * CHUNK_LENGTH,
+                                                            get_ie_audio=get_ie_audio, get_ie_text=get_ie_text,
+                                                            get_ar_audio=get_ar_audio, get_ar_text=get_ar_text)
+            breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
+                                    "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
+                                    "inhale_exhale": phase[i % 2],
+                                    'ie_predicted_text' : ie_predicted_text,
+                                    'ie_predicted_audio' : ie_predicted_audio,
+                                    'activity' : filename,
+                                    'activity_predicted_text' : activity_predicted_text,
+                                    'activity_predicted_audio' : activity_predicted_audio}) 
     else:
         breath_markdown.append({"time": format_milliseconds(0), 
                                        "transcript": transcription,
@@ -414,7 +439,7 @@ def get_start_params():
 
 
 @app.route('/cut', methods=['GET', 'POST'])
-def save_file():
+def cut_phase():
     print("""
     --------------------------
           CUT CLICKED

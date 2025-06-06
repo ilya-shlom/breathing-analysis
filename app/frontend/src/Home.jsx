@@ -137,7 +137,11 @@ function timeStringToSeconds (t) {
         transcript: item.transcript,
         recording_time: item.time,
         inhale_exhale: item.inhale_exhale,
-        activity: data.filename,
+        activity: item.activity,
+        activity_predicted_text: item.activity_predicted_text,
+        activity_predicted_audio: item.activity_predicted_audio,
+        ie_predicted_text: item.ie_predicted_text,
+        ie_predicted_audio: item.ie_predicted_audio
       }));
       setFinished(true);
       setRows(parsedRows);
