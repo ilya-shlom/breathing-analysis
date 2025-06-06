@@ -4,6 +4,9 @@ eventlet.monkey_patch()
 import os
 import time as t
 import re
+from io import BytesIO
+from tempfile import NamedTemporaryFile
+
 
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, send_file
 from flask_socketio import SocketIO
@@ -57,6 +60,40 @@ DEV_MODE = 0
 DATA_COLLECT_MODE = 1
 PROD_MODE = 2
 APP_MODE = DEV_MODE
+
+
+def slice_and_get_params(wav_path: str, slice_start, slice_end):
+    """
+    Load the WAV at wav_path, take only the first `slice_ms` milliseconds,
+    and then call transcribe_file(), bt.transcript(), and get_breath_params on a temporary file.
+    This avoids saving the clipped file permanently to disk.
+    """
+
+    # 1) Read the original WAV into RAM
+    full_audio = AudioSegment.from_wav(wav_path)
+
+    # 2) Slice out [0: slice_ms] (e.g. first second if slice_ms=1000)
+    clipped = full_audio[slice_start:slice_end]
+
+    # 3) Export that slice into a BytesIO (in WAV format)
+    buf = BytesIO()
+    clipped.export(buf, format="wav")
+    buf.seek(0)
+
+    # 4) Write the clipped audio to a temporary WAV file so we have a filename to pass
+    from tempfile import NamedTemporaryFile
+    with NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
+        tmp.write(buf.read())
+        tmp.flush()
+
+
+        # 6) Call breath parameter detection on the temp file
+        ie_param = get_breath_params.predict(get_breath_params.IE, tmp.name)
+        ar_param = get_breath_params.predict(get_breath_params.AR, tmp.name)
+
+    # 7) Return both transcription results and breath parameters
+    return ie_param, ar_param
+
 
 def find_silence_indices(s: str) -> list[int]:
     """
