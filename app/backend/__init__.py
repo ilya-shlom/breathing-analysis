@@ -63,7 +63,7 @@ APP_MODE = DEV_MODE
 
 
 def slice_and_get_params(wav_path: str, slice_start, slice_end,
-                         get_ie_audio=False, get_ie_text=False, get_ar_audio=False, get_ar_text=False):
+                         get_ie_audio=False, get_ie_text=False, get_ar_audio=False, get_ar_text=False, transcript = ""):
     """
     Load the WAV at wav_path, take only the first `slice_ms` milliseconds,
     and then call transcribe_file(), bt.transcript(), and get_breath_params on a temporary file.
@@ -148,16 +148,18 @@ def markdown_breath(filename: str, autosplit: bool = True,
     phase = ["inhale", "exhale"]
     breath_markdown = []
     if autosplit:
-        ie_predicted_audio, ie_predicted_text, activity_predicted_audio, activity_predicted_text = None, None, None, None
+
         for i in range(len(silence_indices) - 1):
-            ie_predicted_audio, 
-            ie_predicted_text, 
-            activity_predicted_audio,
+            partial_transcription = transcription[silence_indices[i]:silence_indices[i+1]]
+            ie_predicted_audio, \
+            ie_predicted_text, \
+            activity_predicted_audio, \
             activity_predicted_text = slice_and_get_params(filename, silence_indices[i] * CHUNK_LENGTH, silence_indices[i+1] * CHUNK_LENGTH,
                                                             get_ie_audio=get_ie_audio, get_ie_text=get_ie_text,
-                                                            get_ar_audio=get_ar_audio, get_ar_text=get_ar_text)
+                                                            get_ar_audio=get_ar_audio, get_ar_text=get_ar_text,
+                                                            transcript=partial_transcription)
             breath_markdown.append({"time": format_milliseconds(CHUNK_LENGTH * silence_indices[i]), 
-                                    "transcript": transcription[silence_indices[i]:silence_indices[i+1]],
+                                    "transcript": partial_transcription,
                                     "inhale_exhale": phase[i % 2],
                                     'ie_predicted_text' : ie_predicted_text,
                                     'ie_predicted_audio' : ie_predicted_audio,
@@ -295,7 +297,12 @@ def upload_file():
         client_data[sid]["autosplit"] = str_to_bool(autosplit)
     try:
         # Run transcription
-        breath_markdown, transcription = markdown_breath(file_path)
+        breath_markdown, transcription = markdown_breath(file_path,
+                                                        client_data[sid]["autosplit"],
+                                                        client_data[sid]["autoBreathByAudio"],
+                                                        client_data[sid]["autoBreathByText"],
+                                                        client_data[sid]["autoActivityByAudio"],
+                                                        client_data[sid]["autoActivityByText"])
 
         return jsonify({'filename': filename,
                         'full_transcript': transcription,
